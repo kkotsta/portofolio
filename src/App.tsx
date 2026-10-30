@@ -110,6 +110,13 @@ function Nav() {
         <nav className="hidden md:flex items-center gap-8">
           {[{ label: "Work", href: "#panels" }, { label: "Contact", href: "#contact" }].map(l => (
             <a key={l.label} href={l.href}
+              onClick={(e) => {
+                e.preventDefault();
+                const target = document.querySelector(l.href);
+                if (target) {
+                  target.scrollIntoView({ behavior: "smooth" });
+                }
+              }}
               style={{ color: "#a39d94", fontFamily: "var(--font-body)", fontSize: "0.875rem" }}
               onMouseEnter={e => ((e.target as HTMLElement).style.color = "#f4f1eb")}
               onMouseLeave={e => ((e.target as HTMLElement).style.color = "#a39d94")}
@@ -130,7 +137,14 @@ function Nav() {
       {open && (
         <div className="md:hidden px-6 pb-6 flex flex-col gap-4" style={{ borderTop: "1px solid #34312d" }}>
           {[{ label: "Work", href: "#panels" }, { label: "Contact", href: "#contact" }].map(l => (
-            <a key={l.label} href={l.href} onClick={() => setOpen(false)}
+            <a key={l.label} href={l.href} onClick={(e) => {
+              e.preventDefault();
+              setOpen(false);
+              const target = document.querySelector(l.href);
+              if (target) {
+                target.scrollIntoView({ behavior: "smooth" });
+              }
+            }}
               style={{ color: "#f4f1eb", fontFamily: "var(--font-body)", fontSize: "1.125rem" }}>{l.label}</a>
           ))}
         </div>
@@ -241,16 +255,13 @@ function Hero() {
 function ThreePanels() {
   const [active, setActive] = useState(0);
   const activeRef = useRef(0);
-  const updateScrollRef = useRef<(() => void) | null>(null);
-
-  // DOM refs for scroll-driven animation (no React re-render on scroll)
   const scrollRef = useRef<HTMLDivElement>(null);
   const cardRowRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const subtopicRefs = useRef<(HTMLDivElement | null)[]>([]);
   const titleRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const detailRef = useRef<HTMLDivElement>(null);
   const selectedIndicatorRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const projectsListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let frame = 0;
@@ -260,76 +271,65 @@ function ThreePanels() {
       const el = scrollRef.current;
       if (!el || !cardRowRef.current) return;
 
-      const { top, height } = el.getBoundingClientRect();
-      const stickyTop = 56;
-      const availableHeight = window.innerHeight - stickyTop;
-      const scrolled = stickyTop - top;
-      const total = height - availableHeight;
-      if (total <= 0) return;
-      const p = Math.max(0, Math.min(1, scrolled / total));
+      const { top } = el.getBoundingClientRect();
+      const stickyTop = 56; // 3.5rem navbar height
+      // The collapse starts when #panels reaches the navbar and smoothly
+      // transitions into a docked compact tab bar over 160px of natural page scroll.
+      const collapseDistance = 160;
+      const scrolledPast = stickyTop - top;
+      const progress = Math.max(0, Math.min(1, scrolledPast / collapseDistance));
 
-      // Use almost the full sticky track so every part of the scroll has a
-      // visible response, rather than long pauses before and after the cards.
-      const raw = Math.max(0, Math.min(1, p / 0.82));
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const cp = reduceMotion ? 1 : raw * raw * (3 - 2 * raw);
+      const cp = reduceMotion ? (progress > 0.5 ? 1 : 0) : progress * progress * (3 - 2 * progress);
 
-      // Card row height: 46vh → 68px
-      const maxH = Math.min(availableHeight * 0.46, 420);
-      const minH = 68;
+      // Card row height: collapses from 210px to 54px
+      const maxH = 210;
+      const minH = 54;
       const h = maxH - (maxH - minH) * cp;
       cardRowRef.current.style.height = `${h}px`;
 
-      // Give the selected section more presence as the cards collapse.
+      // Active card flex-grow
       cardRefs.current.forEach((card, i) => {
         if (!card) return;
         card.style.flexGrow = i === activeRef.current
-          ? `${1 + cp * 0.6}`
-          : `${1 - cp * 0.3}`;
+          ? `${1 + cp * 0.4}`
+          : `${1 - cp * 0.2}`;
       });
 
-      // Title font size: large → small
-      const maxFont = Math.max(18, Math.min(28, window.innerWidth * 0.022));
-      const minFont = 13;
+      // Title font size: 20px -> 13.5px
+      const maxFont = 20;
+      const minFont = 13.5;
       const fontSize = maxFont - (maxFont - minFont) * cp;
       titleRefs.current.forEach(el => {
         if (el) el.style.fontSize = `${fontSize}px`;
       });
 
-      // Subtopics fade out in first 40% of collapse
-      const subOp = Math.max(0, 1 - cp * 2.5);
+      // Subtopics chips fade out as it collapses
+      const subOp = Math.max(0, 1 - cp * 2.2);
       subtopicRefs.current.forEach(el => {
-        if (el) { el.style.opacity = `${subOp}`; el.style.pointerEvents = subOp < 0.1 ? "none" : "auto"; }
+        if (el) {
+          el.style.opacity = `${subOp}`;
+          el.style.pointerEvents = subOp < 0.1 ? "none" : "auto";
+        }
       });
 
-      // Keep the selected outline visible at every stage.
+      // Selected outline indicator
       selectedIndicatorRefs.current.forEach((el, i) => {
         if (el) el.style.opacity = i === activeRef.current ? "1" : "0";
       });
-
-      // Bring the detail in while the cards finish settling so the two
-      // movements read as one continuous transition.
-      const detailOp = Math.max(0, Math.min(1, (cp - 0.48) / 0.42));
-      if (detailRef.current) {
-        detailRef.current.style.opacity = `${detailOp}`;
-        detailRef.current.style.transform = `translateY(${(1 - detailOp) * 12}px)`;
-        detailRef.current.style.pointerEvents = detailOp > 0.1 ? "auto" : "none";
-      }
     };
 
     const requestUpdate = () => {
       if (!frame) frame = window.requestAnimationFrame(update);
     };
-    updateScrollRef.current = requestUpdate;
 
-    const onScroll = () => requestUpdate();
-    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", requestUpdate, { passive: true });
     window.addEventListener("resize", requestUpdate);
     update();
+
     return () => {
-      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", requestUpdate);
       window.removeEventListener("resize", requestUpdate);
-      updateScrollRef.current = null;
       if (frame) window.cancelAnimationFrame(frame);
     };
   }, []);
@@ -337,40 +337,49 @@ function ThreePanels() {
   const handleSelect = (id: number) => {
     activeRef.current = id;
     setActive(id);
-    updateScrollRef.current?.();
+    if (projectsListRef.current) {
+      const rect = projectsListRef.current.getBoundingClientRect();
+      const targetOffset = 130;
+      if (rect.top < targetOffset) {
+        window.scrollTo({
+          top: window.scrollY + rect.top - targetOffset,
+          behavior: "smooth",
+        });
+      }
+    }
   };
 
   const panel = PANEL_STYLES[active];
 
   return (
-    <div id="panels" ref={scrollRef} style={{ height: "175svh", position: "relative" }}>
-      <div style={{ position: "sticky", top: "3.5rem", height: "calc(100svh - 3.5rem)", overflow: "hidden" }}>
-
-        {/* Landscape background photo */}
-        <img
-          src={bg2Photo}
-          alt=""
-          aria-hidden="true"
-          style={{
-            position: "absolute", inset: 0, width: "100%", height: "100%",
-            objectFit: "cover", objectPosition: "center bottom",
-            filter: "brightness(0.9) saturate(0.95)",
-          }}
-        />
-        {/* Continue the photo-to-photo blend without a dark seam. */}
-        <div style={{
-          position: "absolute", top: 0, left: 0, right: 0, height: "52%",
-          background: "linear-gradient(to bottom, #495d70 0%, rgba(73,93,112,0.52) 26%, transparent 100%)",
+    <section id="panels" ref={scrollRef} style={{ position: "relative", minHeight: "100vh", paddingBottom: "4rem" }}>
+      {/* Landscape background photo covering the section */}
+      <img
+        src={bg2Photo}
+        alt=""
+        aria-hidden="true"
+        style={{
+          position: "absolute", inset: 0, width: "100%", height: "100%",
+          objectFit: "cover", objectPosition: "center bottom",
+          filter: "brightness(0.85) saturate(0.95)",
           pointerEvents: "none",
-        }} />
-        {/* Ease the landscape back into the site's warm charcoal background. */}
-        <div style={{
-          position: "absolute", bottom: 0, left: 0, right: 0, height: "42%",
-          background: "linear-gradient(to bottom, transparent 0%, rgba(23,22,20,0.38) 48%, #171614 100%)",
-          pointerEvents: "none",
-        }} />
+        }}
+      />
+      {/* Top blend from sunset/slate into landscape */}
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: "260px",
+        background: "linear-gradient(to bottom, #495d70 0%, rgba(73,93,112,0.42) 40%, transparent 100%)",
+        pointerEvents: "none",
+      }} />
+      {/* Bottom blend into contact section's warm charcoal */}
+      <div style={{
+        position: "absolute", bottom: 0, left: 0, right: 0, height: "320px",
+        background: "linear-gradient(to bottom, transparent 0%, rgba(23,22,20,0.65) 50%, #171614 100%)",
+        pointerEvents: "none",
+      }} />
 
-      <div style={{ position: "relative", zIndex: 1, height: "100%", display: "flex", flexDirection: "column", padding: "1rem 1.5rem 1.5rem", maxWidth: "72rem", margin: "0 auto", width: "100%" }}>
+      {/* Main Container */}
+      <div style={{ position: "relative", zIndex: 1, maxWidth: "72rem", margin: "0 auto", padding: "2rem 1.5rem 0" }}>
 
         {/* Section label */}
         <div className="flex items-center gap-4 mb-4">
@@ -378,98 +387,121 @@ function ThreePanels() {
           <span style={{ flex: 1, height: "1px", background: "#34312d" }} />
         </div>
 
-        {/* Card row — height driven by scroll */}
-        <div ref={cardRowRef} style={{ display: "flex", gap: "6px", height: `${Math.min((window.innerHeight - 56) * 0.46, 420)}px`, flexShrink: 0, overflow: "hidden" }}>
-          {PANEL_STYLES.map((p, i) => (
-            <div key={p.id}
-              ref={el => { cardRefs.current[i] = el; }}
-              onClick={() => handleSelect(p.id)}
-              style={{
-                flex: 1,
-                background: p.bg,
-                border: `1px solid ${active === p.id ? p.border : "#181818"}`,
-                borderRadius: "8px",
-                padding: "1.25rem 1.25rem",
-                cursor: "pointer",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                overflow: "hidden",
-                transition: "border-color 0.3s, flex-grow 0.18s ease-out",
-                position: "relative",
-              }}
-            >
-              {/* Selected indicator box (fades in when collapsed) */}
-              <div ref={el => { selectedIndicatorRefs.current[i] = el; }}
-                style={{
-                  position: "absolute", top: 6, left: 6, right: 6, bottom: 6,
-                  border: `1px solid ${p.accent}`,
-                  borderRadius: "5px",
-                  opacity: active === p.id ? 1 : 0,
-                  transition: "opacity 0.2s",
-                  pointerEvents: "none",
-                }}
-              />
-
-              {/* Title */}
-              <div ref={el => { titleRefs.current[i] = el; }}
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontWeight: 400,
-                  color: active === p.id ? "#f4f1eb" : "#aaa39a",
-                  fontSize: `${Math.min(28, window.innerWidth * 0.022)}px`,
-                  lineHeight: 1.25,
-                  transition: "color 0.3s",
-                }}
-              >
-                {p.label}
-              </div>
-
-              {/* Subtopic chips */}
-              <div ref={el => { subtopicRefs.current[i] = el; }}
-                className="custom-scroll"
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  alignContent: "flex-start",
-                  gap: "6px",
-                  transition: "opacity 0.15s",
-                  overflowY: "auto",
-                  maxHeight: "calc(100% - 44px)",
-                  paddingRight: "2px",
-                }}
-              >
-                {p.projects.map((project) => (
-                  <div key={project.title} style={{
-                    background: p.chip,
-                    border: `1px solid ${p.border}`,
-                    borderRadius: "4px",
-                    padding: "0.28rem 0.65rem",
-                    display: "inline-flex",
-                    alignItems: "center",
-                  }}>
-                    <span style={{ fontFamily: "var(--font-body)", color: p.accent, fontSize: "0.78rem", fontWeight: 400 }}>{project.title}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Detail content — fades in as cards collapse */}
-        <div ref={detailRef}
-          className="custom-scroll"
+        {/* Sticky Card Row */}
+        <div
           style={{
-            flex: 1,
-            minHeight: 0,
-            opacity: 0,
-            pointerEvents: "none",
-            overflowY: "auto",
-            paddingTop: "1.25rem",
-            paddingRight: "0.5rem",
-            paddingBottom: "2.5rem",
+            position: "sticky",
+            top: "3.5rem",
+            zIndex: 30,
+            paddingTop: "0.5rem",
+            paddingBottom: "0.75rem",
+            backdropFilter: "blur(14px)",
+            background: "linear-gradient(to bottom, rgba(23,22,20,0.88) 0%, rgba(23,22,20,0.7) 85%, transparent 100%)",
+            margin: "0 -1.5rem",
+            paddingLeft: "1.5rem",
+            paddingRight: "1.5rem",
           }}
         >
+          <div ref={cardRowRef} style={{ display: "flex", gap: "8px", height: "210px", overflow: "hidden" }}>
+            {PANEL_STYLES.map((p, i) => (
+              <div
+                key={p.id}
+                ref={el => { cardRefs.current[i] = el; }}
+                onClick={() => handleSelect(p.id)}
+                style={{
+                  flex: 1,
+                  background: p.bg,
+                  border: `1px solid ${active === p.id ? p.border : "#282522"}`,
+                  borderRadius: "8px",
+                  padding: "0.85rem 1.1rem",
+                  cursor: "pointer",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  overflow: "hidden",
+                  transition: "border-color 0.25s, flex-grow 0.2s ease-out, background-color 0.25s",
+                  position: "relative",
+                  boxShadow: active === p.id ? `0 4px 20px ${p.accent}22` : "none",
+                }}
+              >
+                {/* Selected indicator */}
+                <div
+                  ref={el => { selectedIndicatorRefs.current[i] = el; }}
+                  style={{
+                    position: "absolute", top: 4, left: 4, right: 4, bottom: 4,
+                    border: `1px solid ${p.accent}`,
+                    borderRadius: "6px",
+                    opacity: active === p.id ? 1 : 0,
+                    transition: "opacity 0.2s",
+                    pointerEvents: "none",
+                  }}
+                />
+
+                {/* Title & Count Badge */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                  <div
+                    ref={el => { titleRefs.current[i] = el; }}
+                    style={{
+                      fontFamily: "var(--font-display)",
+                      fontWeight: 500,
+                      color: active === p.id ? "#f4f1eb" : "#a8a29a",
+                      fontSize: "20px",
+                      lineHeight: 1.2,
+                      transition: "color 0.25s",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {p.label}
+                  </div>
+                  <span style={{
+                    fontFamily: "var(--font-body)",
+                    fontSize: "0.7rem",
+                    color: active === p.id ? p.accent : "#787268",
+                    background: "rgba(0,0,0,0.25)",
+                    padding: "0.15rem 0.5rem",
+                    borderRadius: "9999px",
+                    fontWeight: 500,
+                  }}>
+                    {p.projects.length}
+                  </span>
+                </div>
+
+                {/* Subtopic chips */}
+                <div
+                  ref={el => { subtopicRefs.current[i] = el; }}
+                  className="custom-scroll"
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignContent: "flex-start",
+                    gap: "5px",
+                    transition: "opacity 0.15s",
+                    overflow: "hidden",
+                    maxHeight: "135px",
+                  }}
+                >
+                  {p.projects.map((project) => (
+                    <div key={project.title} style={{
+                      background: p.chip,
+                      border: `1px solid ${p.border}`,
+                      borderRadius: "4px",
+                      padding: "0.22rem 0.55rem",
+                      display: "inline-flex",
+                      alignItems: "center",
+                    }}>
+                      <span style={{ fontFamily: "var(--font-body)", color: p.accent, fontSize: "0.75rem", fontWeight: 400 }}>{project.title}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Project Cards in Natural Page Flow */}
+        <div ref={projectsListRef} style={{ paddingTop: "1.75rem", paddingBottom: "2rem" }}>
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
@@ -479,38 +511,40 @@ function ThreePanels() {
               <div
                 key={project.title}
                 style={{
-                  background: "rgba(23, 22, 20, 0.55)",
+                  background: "rgba(23, 22, 20, 0.65)",
                   border: `1px solid ${panel.border}`,
                   borderRadius: "8px",
-                  padding: "1.25rem 1.5rem",
+                  padding: "1.5rem",
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "space-between",
                   backdropFilter: "blur(12px)",
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
-                  transition: "border-color 0.2s, transform 0.2s",
+                  boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
+                  transition: "border-color 0.25s, transform 0.2s, box-shadow 0.25s",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = panel.accent;
-                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.transform = "translateY(-3px)";
+                  e.currentTarget.style.boxShadow = `0 8px 30px rgba(0,0,0,0.4), 0 0 15px ${panel.accent}22`;
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = panel.border;
                   e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "0 4px 24px rgba(0,0,0,0.3)";
                 }}
               >
                 <div>
                   <p style={{ fontFamily: "var(--font-body)", color: panel.accent, fontSize: "0.68rem", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "0.5rem", fontWeight: 500 }}>
                     {project.shortDescription}
                   </p>
-                  <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 500, color: "#f4f1eb", fontSize: "1.25rem", lineHeight: 1.25, marginBottom: "0.65rem" }}>
+                  <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 500, color: "#f4f1eb", fontSize: "1.25rem", lineHeight: 1.25, marginBottom: "0.75rem" }}>
                     {project.title}
                   </h3>
-                  <p style={{ fontFamily: "var(--font-body)", fontWeight: 300, color: "#aaa39a", fontSize: "0.875rem", lineHeight: 1.7 }}>
+                  <p style={{ fontFamily: "var(--font-body)", fontWeight: 300, color: "#aaa39a", fontSize: "0.875rem", lineHeight: 1.75 }}>
                     {project.description}
                   </p>
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "1rem" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "1.25rem" }}>
                   {project.tags.map((tag) => (
                     <span key={tag} style={{
                       fontFamily: "var(--font-body)",
@@ -529,9 +563,9 @@ function ThreePanels() {
             ))}
           </div>
         </div>
+
       </div>
-      </div>
-    </div>
+    </section>
   );
 }
 
