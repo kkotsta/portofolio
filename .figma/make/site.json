@@ -1,0 +1,10 @@
+{
+  "description": "Create and manage a clean, user-friendly portfolio website that makes showcasing your work simple and effortless for professionals and creatives.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
