@@ -10,10 +10,10 @@ const ME = {
   name: "Kit Kother",
   tagline: "I engineer things, then make them feel right.",
   bio: "MSc student in Integrated Product Design at TU Delft. Background in mechanical engineering. I work at the intersection of how things function and how they should feel to use — currently applying that at Ampelmann, analysing the feasibility of future offshore access operations.",
-  email: "kit.kother@example.com",
+  email: "kitkother@gmail.com",
   links: [
     { label: "LinkedIn", href: "https://www.linkedin.com/in/kit-kother/" },
-    { label: "GitHub", href: "#" },
+    { label: "GitHub", href: "https://github.com/kkotsta" },
   ],
 };
 
