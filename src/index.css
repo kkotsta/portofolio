@@ -37,6 +37,7 @@ body {
 
 .custom-scroll::-webkit-scrollbar {
   width: 5px;
+  height: 5px;
 }
 
 .custom-scroll::-webkit-scrollbar-track {
@@ -51,5 +52,103 @@ body {
 
 .custom-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(221, 169, 87, 0.65);
+}
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.project-card {
+  transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+  will-change: transform, opacity;
+}
+
+.project-card:hover {
+  transform: translateY(-4px);
+}
+
+.project-card-enter {
+  animation: cardFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.project-card-exit {
+  opacity: 0 !important;
+  transform: scale(0.95) translateY(6px) !important;
+  transition: opacity 0.22s ease, transform 0.22s ease !important;
+  pointer-events: none;
+}
+
+/* Category Tab Buttons */
+.category-tab-btn {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(8px);
+}
+
+.category-tab-btn-active {
+  border: 1.5px solid #dda957 !important;
+  background: rgba(221, 169, 87, 0.12) !important;
+  box-shadow: 0 0 18px rgba(221, 169, 87, 0.25), inset 0 0 10px rgba(221, 169, 87, 0.08) !important;
+}
+
+.category-tab-btn-inactive {
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(23, 22, 20, 0.65) !important;
+}
+
+.category-tab-btn-inactive:hover {
+  border-color: rgba(221, 169, 87, 0.45) !important;
+  color: #f4f1eb !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Tag Pills */
+.tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.28rem 0.65rem;
+  border-radius: 9999px;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  user-select: none;
+  cursor: pointer;
+  background: rgba(20, 19, 17, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(244, 241, 235, 0.84);
+  font-weight: 400;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tag-pill:hover {
+  border-color: #dda957;
+  color: #ffffff;
+  background: rgba(221, 169, 87, 0.15);
+  box-shadow: 0 0 10px rgba(221, 169, 87, 0.25);
+  transform: translateY(-1px);
+}
+
+.tag-pill.tag-pill-active {
+  background: #dda957;
+  color: #171614;
+  border-color: #dda957;
+  font-weight: 600;
+  box-shadow: 0 2px 14px rgba(221, 169, 87, 0.45), 0 0 10px rgba(221, 169, 87, 0.2);
+  transform: translateY(-1px);
+}
+
+.tag-pill.tag-pill-active:hover {
+  background: #e6b76c;
+  border-color: #e6b76c;
+  color: #171614;
+  box-shadow: 0 3px 16px rgba(221, 169, 87, 0.55);
 }
 

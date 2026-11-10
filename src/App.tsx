@@ -203,7 +203,7 @@ function Hero() {
 
       {/* Content */}
       <div className="relative px-6 pt-14 w-full max-w-6xl mx-auto">
-        <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center py-20">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center py-12 lg:py-16">
           <div>
             <div className="flex items-center gap-3 mb-8">
               <span className="block w-8 h-px" style={{ background: "#dda957" }} />
@@ -214,10 +214,10 @@ function Hero() {
             <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, color: "#f4f1eb", fontSize: "clamp(3rem, 8vw, 5.5rem)", lineHeight: 1, letterSpacing: "-0.045em", marginBottom: "1.5rem", textShadow: "0 2px 24px rgba(0,0,0,0.4)" }}>
               Kit <span style={{ color: "#dda957" }}>Kother</span>
             </h1>
-            <p style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "rgba(244,241,235,0.8)", fontSize: "clamp(1rem, 2.5vw, 1.2rem)", lineHeight: 1.55, marginBottom: "2rem", maxWidth: "38ch" }}>
+            <p style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "rgba(244,241,235,0.8)", fontSize: "clamp(1rem, 2.5vw, 1.2rem)", lineHeight: 1.55, marginBottom: "1.75rem", maxWidth: "38ch" }}>
               {ME.tagline}
             </p>
-            <p style={{ fontFamily: "var(--font-body)", fontWeight: 300, color: "rgba(244,241,235,0.68)", fontSize: "0.9rem", lineHeight: 1.8, maxWidth: "44ch", marginBottom: "2.5rem" }}>
+            <p style={{ fontFamily: "var(--font-body)", fontWeight: 300, color: "rgba(244,241,235,0.68)", fontSize: "0.9rem", lineHeight: 1.8, maxWidth: "44ch", marginBottom: "2rem" }}>
               {ME.bio}
             </p>
             <div className="flex gap-6">
@@ -242,7 +242,7 @@ function Hero() {
         </div>
 
         {/* Photo credit — subtle, bottom right */}
-        <p style={{ position: "absolute", bottom: "1.25rem", right: "1.5rem", fontFamily: "var(--font-body)", fontSize: "0.65rem", color: "rgba(240,237,232,0.25)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+        <p style={{ position: "absolute", bottom: "0.75rem", right: "1.5rem", fontFamily: "var(--font-body)", fontSize: "0.65rem", color: "rgba(240,237,232,0.25)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
           Photo by Kit Kother
         </p>
       </div>
@@ -250,11 +250,30 @@ function Hero() {
   );
 }
 
-// ─── THREE PANELS ─────────────────────────────────────────────────────────────
+// ─── THREE PANELS / PROJECTS SECTION ──────────────────────────────────────────
+
+const CATEGORIES: { id: "all" | ProjectSection; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "Education", label: "Education" },
+  { id: "Career", label: "Career" },
+  { id: "Personal Projects", label: "Personal Projects" },
+];
+
+const SECTION_ACCENTS: Record<ProjectSection, string> = {
+  "Education": "#e09b45",
+  "Career": "#66bdd3",
+  "Personal Projects": "#ad91ce",
+};
 
 function ThreePanels() {
-  const [active, setActive] = useState(0);
-  const activeRef = useRef(0);
+  const [activeCategory, setActiveCategory] = useState<"all" | ProjectSection>("all");
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [renderedCategory, setRenderedCategory] = useState<"all" | ProjectSection>("all");
+  const [renderedTag, setRenderedTag] = useState<string | null>(null);
+  const [isExiting, setIsExiting] = useState(false);
+
+  const activeCategoryRef = useRef<"all" | ProjectSection>("all");
+  const transitionTimeoutRef = useRef<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const cardRowRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -273,8 +292,6 @@ function ThreePanels() {
 
       const { top } = el.getBoundingClientRect();
       const stickyTop = 56; // 3.5rem navbar height
-      // The collapse starts when #panels reaches the navbar and smoothly
-      // transitions into a docked compact tab bar over 160px of natural page scroll.
       const collapseDistance = 160;
       const scrolledPast = stickyTop - top;
       const progress = Math.max(0, Math.min(1, scrolledPast / collapseDistance));
@@ -282,18 +299,31 @@ function ThreePanels() {
       const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       const cp = reduceMotion ? (progress > 0.5 ? 1 : 0) : progress * progress * (3 - 2 * progress);
 
+      const isMobile = window.innerWidth < 768;
+
       // Card row height: collapses from 210px to 54px
       const maxH = 210;
       const minH = 54;
       const h = maxH - (maxH - minH) * cp;
       cardRowRef.current.style.height = `${h}px`;
 
-      // Active card flex-grow
       cardRefs.current.forEach((card, i) => {
         if (!card) return;
-        card.style.flexGrow = i === activeRef.current
-          ? `${1 + cp * 0.4}`
-          : `${1 - cp * 0.2}`;
+        if (isMobile) {
+          if (cp > 0.45) {
+            card.style.minWidth = "0px";
+            card.style.flex = "1 1 0px";
+          } else {
+            card.style.minWidth = "82vw";
+            card.style.flex = "0 0 auto";
+          }
+        } else {
+          card.style.minWidth = "0px";
+          card.style.flex = "1 1 0px";
+          card.style.flexGrow = (PANEL_STYLES[i].label === activeCategoryRef.current)
+            ? `${1 + cp * 0.4}`
+            : `${1 - cp * 0.2}`;
+        }
       });
 
       // Title font size: 20px -> 13.5px
@@ -315,7 +345,7 @@ function ThreePanels() {
 
       // Selected outline indicator
       selectedIndicatorRefs.current.forEach((el, i) => {
-        if (el) el.style.opacity = i === activeRef.current ? "1" : "0";
+        if (el) el.style.opacity = (PANEL_STYLES[i].label === activeCategoryRef.current) ? "0.6" : "0";
       });
     };
 
@@ -331,25 +361,65 @@ function ThreePanels() {
       window.removeEventListener("scroll", requestUpdate);
       window.removeEventListener("resize", requestUpdate);
       if (frame) window.cancelAnimationFrame(frame);
+      if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current);
     };
   }, []);
 
-  const handleSelect = (id: number) => {
-    activeRef.current = id;
-    setActive(id);
-    if (projectsListRef.current) {
-      const rect = projectsListRef.current.getBoundingClientRect();
-      const targetOffset = 130;
-      if (rect.top < targetOffset) {
-        window.scrollTo({
-          top: window.scrollY + rect.top - targetOffset,
-          behavior: "smooth",
-        });
-      }
+  const handleSelectCategory = (catId: "all" | ProjectSection) => {
+    const isReset = catId === activeCategory && selectedTag !== null;
+    if (catId === activeCategory && !isReset) return;
+
+    activeCategoryRef.current = catId;
+    setActiveCategory(catId);
+    setSelectedTag(null);
+
+    if (transitionTimeoutRef.current) {
+      clearTimeout(transitionTimeoutRef.current);
     }
+
+    setIsExiting(true);
+    transitionTimeoutRef.current = window.setTimeout(() => {
+      setRenderedCategory(catId);
+      setRenderedTag(null);
+      setIsExiting(false);
+    }, 220);
   };
 
-  const panel = PANEL_STYLES[active];
+  const handleSelectNode = (id: number) => {
+    const panel = PANEL_STYLES[id];
+    handleSelectCategory(panel.label);
+  };
+
+  const handleTagClick = (tag: string | null, section?: ProjectSection) => {
+    const targetCategory = section !== undefined ? section : activeCategory;
+    const isDeselect = targetCategory === activeCategory && (tag === null || selectedTag === tag);
+    const nextTag = isDeselect ? null : tag;
+
+    activeCategoryRef.current = targetCategory;
+    setActiveCategory(targetCategory);
+    setSelectedTag(nextTag);
+
+    if (transitionTimeoutRef.current) {
+      clearTimeout(transitionTimeoutRef.current);
+    }
+
+    setIsExiting(true);
+    transitionTimeoutRef.current = window.setTimeout(() => {
+      setRenderedCategory(targetCategory);
+      setRenderedTag(nextTag);
+      setIsExiting(false);
+    }, 220);
+  };
+
+  const displayedProjects = PROJECTS.filter((project) => {
+    if (renderedCategory !== "all" && project.section !== renderedCategory) {
+      return false;
+    }
+    if (!renderedTag) {
+      return true;
+    }
+    return project.title === renderedTag || project.tags.includes(renderedTag);
+  });
 
   return (
     <section id="panels" ref={scrollRef} style={{ position: "relative", minHeight: "100vh", paddingBottom: "4rem" }}>
@@ -379,7 +449,7 @@ function ThreePanels() {
       }} />
 
       {/* Main Container */}
-      <div style={{ position: "relative", zIndex: 1, maxWidth: "72rem", margin: "0 auto", padding: "2rem 1.5rem 0" }}>
+      <div style={{ position: "relative", zIndex: 1, maxWidth: "72rem", margin: "0 auto", padding: "1.5rem 1.5rem 0" }}>
 
         {/* Section label */}
         <div className="flex items-center gap-4 mb-4">
@@ -387,7 +457,116 @@ function ThreePanels() {
           <span style={{ flex: 1, height: "1px", background: "#34312d" }} />
         </div>
 
-        {/* Sticky Card Row */}
+        {/* 1. FILTER BAR WITH "ALL" AND TAGS (Directly above the 3 nodes) */}
+        <div
+          className="mb-5 rounded-xl p-3 sm:p-4 backdrop-blur-md"
+          style={{
+            background: "linear-gradient(to bottom, rgba(23,22,20,0.95) 0%, rgba(23,22,20,0.85) 100%)",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.35)",
+          }}
+        >
+          {/* Top row: All (13), Education (7), Career (2), Personal Projects (4) */}
+          <div className="flex flex-nowrap md:flex-wrap items-center gap-2 sm:gap-3 overflow-x-auto custom-scroll pb-1">
+            {CATEGORIES.map((cat) => {
+              const isActive = activeCategory === cat.id;
+              const count =
+                cat.id === "all"
+                  ? PROJECTS.length
+                  : PROJECTS.filter((p) => p.section === cat.id).length;
+
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => handleSelectCategory(cat.id)}
+                  className={`category-tab-btn ${isActive ? "category-tab-btn-active" : "category-tab-btn-inactive"} shrink-0`}
+                  style={{
+                    fontFamily: "var(--font-body)",
+                    fontSize: "0.85rem",
+                    padding: "0.45rem 1rem",
+                    borderRadius: "6px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    cursor: "pointer",
+                    position: "relative",
+                    userSelect: "none",
+                  }}
+                >
+                  <span style={{ fontWeight: isActive ? 600 : 400, color: isActive ? "#f4f1eb" : "#a39d94" }}>
+                    {cat.label}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "0.7rem",
+                      padding: "0.1rem 0.45rem",
+                      borderRadius: "9999px",
+                      background: isActive ? "rgba(221, 169, 87, 0.2)" : "rgba(255, 255, 255, 0.06)",
+                      color: isActive ? "#dda957" : "#787268",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {count}
+                  </span>
+
+                  {isActive && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        bottom: "-1px",
+                        left: "10%",
+                        right: "10%",
+                        height: "2px",
+                        background: "#dda957",
+                        borderRadius: "9999px",
+                        boxShadow: "0 0 8px #dda957",
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Bottom row: FILTER: [ ✦ All ] [ Project Tags ... ] */}
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-3 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <span style={{ fontFamily: "var(--font-body)", color: "#8a847b", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.14em", marginRight: "4px" }}>
+              Filter:
+            </span>
+
+            {/* All tag pill */}
+            <button
+              type="button"
+              onClick={() => handleTagClick(null)}
+              className={`tag-pill ${selectedTag === null ? "tag-pill-active" : ""}`}
+              title={activeCategory === "all" ? "Show all projects" : `Show all ${activeCategory} projects`}
+            >
+              <span>✦ All</span>
+              <span style={{ opacity: 0.7, fontSize: "0.68rem" }}>
+                ({activeCategory === "all" ? PROJECTS.length : PROJECTS.filter((p) => p.section === activeCategory).length})
+              </span>
+            </button>
+
+            {/* Project pills */}
+            {(activeCategory === "all"
+              ? PROJECTS
+              : PROJECTS.filter((p) => p.section === activeCategory)
+            ).map((project) => (
+              <button
+                key={project.title}
+                type="button"
+                onClick={() => handleTagClick(project.title, project.section)}
+                className={`tag-pill ${selectedTag === project.title ? "tag-pill-active" : ""}`}
+                title={`Filter by: ${project.title}`}
+              >
+                {project.title}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 2. THE 3 NODES (Education, Career, Personal Projects) as they were before */}
         <div
           style={{
             position: "sticky",
@@ -402,165 +581,295 @@ function ThreePanels() {
             paddingRight: "1.5rem",
           }}
         >
-          <div ref={cardRowRef} style={{ display: "flex", gap: "8px", height: "210px", overflow: "hidden" }}>
-            {PANEL_STYLES.map((p, i) => (
-              <div
-                key={p.id}
-                ref={el => { cardRefs.current[i] = el; }}
-                onClick={() => handleSelect(p.id)}
-                style={{
-                  flex: 1,
-                  background: p.bg,
-                  border: `1px solid ${active === p.id ? p.border : "#282522"}`,
-                  borderRadius: "8px",
-                  padding: "0.85rem 1.1rem",
-                  cursor: "pointer",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  overflow: "hidden",
-                  transition: "border-color 0.25s, flex-grow 0.2s ease-out, background-color 0.25s",
-                  position: "relative",
-                  boxShadow: active === p.id ? `0 4px 20px ${p.accent}22` : "none",
-                }}
-              >
-                {/* Selected indicator */}
+          <div
+            ref={cardRowRef}
+            className="flex gap-2.5 sm:gap-3 overflow-x-auto md:overflow-hidden snap-x snap-mandatory custom-scroll pb-1 md:pb-0"
+            style={{
+              height: "210px",
+              WebkitOverflowScrolling: "touch",
+            }}
+          >
+            {PANEL_STYLES.map((p, i) => {
+              const isNodeActive = activeCategory === p.label;
+              return (
                 <div
-                  ref={el => { selectedIndicatorRefs.current[i] = el; }}
+                  key={p.id}
+                  ref={el => { cardRefs.current[i] = el; }}
+                  onClick={() => handleSelectNode(p.id)}
+                  className={`category-card snap-center shrink-0 md:shrink`}
                   style={{
-                    position: "absolute", top: 4, left: 4, right: 4, bottom: 4,
-                    border: `1px solid ${p.accent}`,
-                    borderRadius: "6px",
-                    opacity: active === p.id ? 1 : 0,
-                    transition: "opacity 0.2s",
-                    pointerEvents: "none",
-                  }}
-                />
-
-                {/* Title & Count Badge */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-                  <div
-                    ref={el => { titleRefs.current[i] = el; }}
-                    style={{
-                      fontFamily: "var(--font-display)",
-                      fontWeight: 500,
-                      color: active === p.id ? "#f4f1eb" : "#a8a29a",
-                      fontSize: "20px",
-                      lineHeight: 1.2,
-                      transition: "color 0.25s",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {p.label}
-                  </div>
-                  <span style={{
-                    fontFamily: "var(--font-body)",
-                    fontSize: "0.7rem",
-                    color: active === p.id ? p.accent : "#787268",
-                    background: "rgba(0,0,0,0.25)",
-                    padding: "0.15rem 0.5rem",
-                    borderRadius: "9999px",
-                    fontWeight: 500,
-                  }}>
-                    {p.projects.length}
-                  </span>
-                </div>
-
-                {/* Subtopic chips */}
-                <div
-                  ref={el => { subtopicRefs.current[i] = el; }}
-                  className="custom-scroll"
-                  style={{
+                    flex: 1,
+                    background: p.bg,
+                    border: isNodeActive ? "2px solid #dda957" : `1px solid ${p.border}`,
+                    borderRadius: "8px",
+                    padding: "0.85rem 1.1rem",
+                    cursor: "pointer",
                     display: "flex",
-                    flexWrap: "wrap",
-                    alignContent: "flex-start",
-                    gap: "5px",
-                    transition: "opacity 0.15s",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
                     overflow: "hidden",
-                    maxHeight: "135px",
+                    position: "relative",
+                    boxShadow: isNodeActive ? `0 0 24px rgba(221, 169, 87, 0.24), 0 8px 30px rgba(0,0,0,0.4)` : "none",
+                    opacity: activeCategory === "all" ? 0.9 : isNodeActive ? 1 : 0.65,
+                    transition: "border 0.25s, opacity 0.25s, box-shadow 0.25s, flex-grow 0.2s ease-out",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isNodeActive) {
+                      e.currentTarget.style.borderColor = "rgba(221, 169, 87, 0.45)";
+                      e.currentTarget.style.opacity = "0.9";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isNodeActive) {
+                      e.currentTarget.style.borderColor = p.border;
+                      e.currentTarget.style.opacity = activeCategory === "all" ? "0.9" : "0.65";
+                    }
                   }}
                 >
-                  {p.projects.map((project) => (
-                    <div key={project.title} style={{
-                      background: p.chip,
-                      border: `1px solid ${p.border}`,
-                      borderRadius: "4px",
-                      padding: "0.22rem 0.55rem",
-                      display: "inline-flex",
-                      alignItems: "center",
-                    }}>
-                      <span style={{ fontFamily: "var(--font-body)", color: p.accent, fontSize: "0.75rem", fontWeight: 400 }}>{project.title}</span>
+                  {/* Selected outline indicator */}
+                  <div
+                    ref={el => { selectedIndicatorRefs.current[i] = el; }}
+                    style={{
+                      position: "absolute", top: 3, left: 3, right: 3, bottom: 3,
+                      border: `1px solid ${p.accent}`,
+                      borderRadius: "6px",
+                      opacity: isNodeActive ? 0.6 : 0,
+                      transition: "opacity 0.2s",
+                      pointerEvents: "none",
+                    }}
+                  />
+
+                  {/* Title & Count Badge */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", marginBottom: "0.5rem" }}>
+                    <div
+                      ref={el => { titleRefs.current[i] = el; }}
+                      style={{
+                        fontFamily: "var(--font-display)",
+                        fontWeight: 500,
+                        color: isNodeActive ? "#f4f1eb" : "#a8a29a",
+                        fontSize: "20px",
+                        lineHeight: 1.2,
+                        transition: "color 0.25s",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {p.label}
                     </div>
-                  ))}
+                    <span style={{
+                      fontFamily: "var(--font-body)",
+                      fontSize: "0.7rem",
+                      color: isNodeActive ? "#dda957" : "#787268",
+                      background: isNodeActive ? "rgba(221, 169, 87, 0.16)" : "rgba(0,0,0,0.3)",
+                      border: isNodeActive ? "1px solid rgba(221, 169, 87, 0.3)" : "1px solid transparent",
+                      padding: "0.15rem 0.55rem",
+                      borderRadius: "9999px",
+                      fontWeight: 500,
+                      transition: "all 0.25s",
+                    }}>
+                      {p.projects.length}
+                    </span>
+                  </div>
+
+                  {/* Subtopic chips */}
+                  <div
+                    ref={el => { subtopicRefs.current[i] = el; }}
+                    className="custom-scroll"
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignContent: "flex-start",
+                      gap: "6px",
+                      transition: "opacity 0.15s",
+                      overflowY: "auto",
+                      overflowX: "hidden",
+                      maxHeight: "135px",
+                      paddingRight: "2px",
+                    }}
+                  >
+                    {p.projects.map((project) => {
+                      const isTagActive = selectedTag === project.title;
+                      return (
+                        <button
+                          key={project.title}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTagClick(project.title, p.label);
+                          }}
+                          className={`tag-pill ${isTagActive ? "tag-pill-active" : ""}`}
+                          style={{
+                            background: isTagActive ? "#dda957" : p.chip,
+                            borderColor: isTagActive ? "#dda957" : p.border,
+                            color: isTagActive ? "#171614" : p.accent,
+                          }}
+                          title={`Filter by: ${project.title}`}
+                        >
+                          <span>{project.title}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
-        {/* Project Cards in Natural Page Flow */}
+        {/* 3. PROJECT CARDS IN NATURAL PAGE FLOW */}
         <div ref={projectsListRef} style={{ paddingTop: "1.75rem", paddingBottom: "2rem" }}>
+          {/* Active filter status badge */}
+          {renderedTag && (
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6 px-1">
+              <div className="flex items-center gap-2.5">
+                <span style={{ fontFamily: "var(--font-body)", color: "#a39d94", fontSize: "0.72rem", letterSpacing: "0.14em", textTransform: "uppercase" }}>
+                  Filtered by:
+                </span>
+                <div
+                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium"
+                  style={{ background: "rgba(221, 169, 87, 0.15)", border: "1px solid #dda957", color: "#dda957" }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#dda957" }} />
+                  <span>{renderedTag}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleTagClick(null)}
+                    title="Clear filter (Show all)"
+                    className="ml-1 hover:text-white transition-colors cursor-pointer"
+                    aria-label="Clear filter"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <span style={{ fontFamily: "var(--font-body)", color: "#787268", fontSize: "0.75rem" }}>
+                  ({displayedProjects.length} {displayedProjects.length === 1 ? "project" : "projects"})
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleTagClick(null)}
+                className="cursor-pointer text-xs transition-colors flex items-center gap-1.5"
+                style={{ fontFamily: "var(--font-body)", color: "#dda957", textDecoration: "underline", textUnderlineOffset: "4px" }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#f4f1eb")}
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#dda957")}
+              >
+                <span>Show all {renderedCategory === "all" ? "Projects" : renderedCategory}</span>
+                <span>↗</span>
+              </button>
+            </div>
+          )}
+
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))",
             gap: "1.5rem 2rem",
           }}>
-            {panel.projects.map((project) => (
-              <div
-                key={project.title}
-                style={{
-                  background: "rgba(23, 22, 20, 0.65)",
-                  border: `1px solid ${panel.border}`,
-                  borderRadius: "8px",
-                  padding: "1.5rem",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  backdropFilter: "blur(12px)",
-                  boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
-                  transition: "border-color 0.25s, transform 0.2s, box-shadow 0.25s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = panel.accent;
-                  e.currentTarget.style.transform = "translateY(-3px)";
-                  e.currentTarget.style.boxShadow = `0 8px 30px rgba(0,0,0,0.4), 0 0 15px ${panel.accent}22`;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = panel.border;
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 4px 24px rgba(0,0,0,0.3)";
-                }}
-              >
-                <div>
-                  <p style={{ fontFamily: "var(--font-body)", color: panel.accent, fontSize: "0.68rem", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "0.5rem", fontWeight: 500 }}>
-                    {project.shortDescription}
-                  </p>
-                  <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 500, color: "#f4f1eb", fontSize: "1.25rem", lineHeight: 1.25, marginBottom: "0.75rem" }}>
-                    {project.title}
-                  </h3>
-                  <p style={{ fontFamily: "var(--font-body)", fontWeight: 300, color: "#aaa39a", fontSize: "0.875rem", lineHeight: 1.75 }}>
-                    {project.description}
-                  </p>
+            {displayedProjects.map((project, idx) => {
+              const isCardSelected = selectedTag === project.title;
+              const accentColor = SECTION_ACCENTS[project.section] || "#dda957";
+
+              return (
+                <div
+                  key={`${renderedCategory}-${project.title}`}
+                  className={`project-card ${isExiting ? "project-card-exit" : "project-card-enter"}`}
+                  style={{
+                    animationDelay: isExiting ? "0ms" : `${idx * 35}ms`,
+                    background: "rgba(23, 22, 20, 0.65)",
+                    border: `1px solid ${isCardSelected ? "#dda957" : "rgba(255, 255, 255, 0.1)"}`,
+                    borderRadius: "8px",
+                    padding: "1.5rem",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    backdropFilter: "blur(12px)",
+                    boxShadow: isCardSelected
+                      ? "0 8px 30px rgba(0,0,0,0.4), 0 0 18px rgba(221,169,87,0.25)"
+                      : "0 4px 24px rgba(0,0,0,0.3)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "#dda957";
+                    e.currentTarget.style.boxShadow = `0 8px 30px rgba(0,0,0,0.45), 0 0 16px ${accentColor}25`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = isCardSelected ? "#dda957" : "rgba(255, 255, 255, 0.1)";
+                    e.currentTarget.style.boxShadow = isCardSelected
+                      ? "0 8px 30px rgba(0,0,0,0.4), 0 0 18px rgba(221,169,87,0.25)"
+                      : "0 4px 24px rgba(0,0,0,0.3)";
+                  }}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <p style={{ fontFamily: "var(--font-body)", color: accentColor, fontSize: "0.68rem", letterSpacing: "0.15em", textTransform: "uppercase", fontWeight: 500 }}>
+                        {project.shortDescription}
+                      </p>
+                      <span style={{
+                        fontFamily: "var(--font-body)",
+                        fontSize: "0.65rem",
+                        color: "#8a847b",
+                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                        padding: "0.1rem 0.45rem",
+                        borderRadius: "9999px",
+                      }}>
+                        {project.section}
+                      </span>
+                    </div>
+                    <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 500, color: "#f4f1eb", fontSize: "1.25rem", lineHeight: 1.25, marginBottom: "0.75rem" }}>
+                      {project.title}
+                    </h3>
+                    <p style={{ fontFamily: "var(--font-body)", fontWeight: 300, color: "#aaa39a", fontSize: "0.875rem", lineHeight: 1.75 }}>
+                      {project.description}
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "1.25rem" }}>
+                    {project.tags.map((tag) => {
+                      const isTagActive = selectedTag === tag;
+                      return (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTagClick(tag, project.section);
+                          }}
+                          title={`Filter by tag: ${tag}`}
+                          style={{
+                            fontFamily: "var(--font-body)",
+                            fontSize: "0.72rem",
+                            color: isTagActive ? "#171614" : "#aaa39a",
+                            border: `1px solid ${isTagActive ? "#dda957" : "rgba(255,255,255,0.08)"}`,
+                            background: isTagActive ? "#dda957" : "rgba(255,255,255,0.03)",
+                            padding: "0.2rem 0.55rem",
+                            borderRadius: "9999px",
+                            cursor: "pointer",
+                            transition: "all 0.2s ease",
+                            fontWeight: isTagActive ? 600 : 400,
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isTagActive) {
+                              e.currentTarget.style.borderColor = "#dda957";
+                              e.currentTarget.style.color = "#f4f1eb";
+                              e.currentTarget.style.background = "rgba(221,169,87,0.12)";
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isTagActive) {
+                              e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
+                              e.currentTarget.style.color = "#aaa39a";
+                              e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+                            }
+                          }}
+                        >
+                          {tag}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "1.25rem" }}>
-                  {project.tags.map((tag) => (
-                    <span key={tag} style={{
-                      fontFamily: "var(--font-body)",
-                      fontSize: "0.72rem",
-                      color: "#aaa39a",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      background: "rgba(255,255,255,0.03)",
-                      padding: "0.2rem 0.55rem",
-                      borderRadius: "3px",
-                    }}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
