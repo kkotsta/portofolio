@@ -1,5 +1,6 @@
 {
-  "description": "Create and manage a clean, user-friendly portfolio website that makes showcasing your work simple and effortless for professionals and creatives.",
+  "title": "Kit Kother — Portfolio",
+  "description": "Portfolio of Kit Kother — Mechanical Engineering & Integrated Product Design at TU Delft.",
   "robots": {
     "index": false
   },

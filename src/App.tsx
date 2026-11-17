@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import headshot from "@/imports/IMG_6839__1_.jpg";
 import bgPhoto from "@/imports/bg.jpg";
 import bg2Photo from "@/imports/bg2.jpg";
-import projectsCsv from "@/data/projects.csv?raw";
+import projectsCsv from "@/data/projects_portfolio_min.csv?raw";
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 
@@ -22,10 +22,12 @@ type ProjectSection = "Education" | "Career" | "Personal Projects";
 type Project = {
   title: string;
   section: ProjectSection;
+  period: string;
   shortDescription: string;
   description: string;
   tags: string[];
   images: string[];
+  longDescription: string;
 };
 
 /** Resolve an image path: URLs pass through, bare filenames become /images/filename */
@@ -38,82 +40,98 @@ function resolveImagePath(raw: string): string {
 
 const DEFAULT_PROJECT_IMAGES: Record<string, string[]> = {
   "Research through Design (RtD)": ["/images/rtd-1.png"],
-  "Klimmende Stapelaar": ["/images/stapelaar-1.jpg", "/images/stapelaar-2.jpg"],
-  "Custom Mini Vehicle": ["/images/vehicle-1.jpg", "/images/vehicle-2.jpg"],
-  "Direct Air Carbon Capture Paper": [],
-  "Mini CNC Machine": ["/images/cnc-1.png"],
-  "Baxter Roll": [],
-  "Hyperion Lyceum": [],
-  "Offshore Workability Analysis": [],
-  "High School STEM Tutoring": [],
-  "Platenmeubel (Vinyl Cabinet)": [],
-  "Ergonomic Laptop Stand": [],
+  "Klimmende Stapelaar": ["/images/stapelaar1.png"],
+  "Custom Mini Vehicle": ["/images/car.png", "/images/Self_stopping_car.jpeg", "/images/car_launch.jpeg", "/images/launch_actual.jpeg"],
+  "Direct Air Carbon Capture Paper": ["https://images.unsplash.com/photo-1497435334941-8c899ee9e8e9?auto=format&fit=crop&w=1200&q=80"],
+  "Mini CNC Machine": ["/images/cnc.jpg"],
+  "Baxter Roll": ["/images/Baxter_render.jpeg", "/images/Baxter_SW.jpeg"],
+  "Hyperion Lyceum": ["https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80"],
+  "IDE Business Fair": ["https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80"],
+  "Offshore Workability Analysis": ["https://images.unsplash.com/photo-1505705694340-019e1e335916?auto=format&fit=crop&w=1200&q=80"],
+  "High School STEM Tutoring": ["https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=1200&q=80"],
+  "Platenmeubel (Vinyl Cabinet)": ["https://images.unsplash.com/photo-1539185441755-769473a23570?auto=format&fit=crop&w=1200&q=80"],
+  "Ergonomic Laptop Stand": ["https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=1200&q=80"],
   "Photography": ["/images/photography-1.jpg", "/images/photography-2.jpg"],
-  "Writing & Production": [],
+  "Writing & Production": ["https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=1200&q=80"],
+  "EasyTabMaker": ["/images/easytabmaker.png"],
 };
 
-function parseCsvRow(row: string) {
-  const values: string[] = [];
-  let value = "";
-  let quoted = false;
+/** Robust CSV parser that correctly supports multiline quoted fields */
+function parseCSV(text: string): string[][] {
+  const clean = text.replace(/^\uFEFF/, "");
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentValue = "";
+  let inQuotes = false;
 
-  for (let i = 0; i < row.length; i += 1) {
-    const character = row[i];
-    if (character === '"') {
-      if (quoted && row[i + 1] === '"') {
-        value += '"';
+  for (let i = 0; i < clean.length; i += 1) {
+    const char = clean[i];
+    if (char === '"') {
+      if (inQuotes && clean[i + 1] === '"') {
+        currentValue += '"';
         i += 1;
       } else {
-        quoted = !quoted;
+        inQuotes = !inQuotes;
       }
-    } else if (character === "," && !quoted) {
-      values.push(value);
-      value = "";
+    } else if (char === "," && !inQuotes) {
+      currentRow.push(currentValue);
+      currentValue = "";
+    } else if ((char === "\r" || char === "\n") && !inQuotes) {
+      if (char === "\r" && clean[i + 1] === "\n") i += 1;
+      currentRow.push(currentValue);
+      if (currentRow.length > 1 || (currentRow.length === 1 && currentRow[0] !== "")) {
+        rows.push(currentRow);
+      }
+      currentRow = [];
+      currentValue = "";
     } else {
-      value += character;
+      currentValue += char;
     }
   }
 
-  values.push(value);
-  return values;
+  if (currentValue !== "" || currentRow.length > 0) {
+    currentRow.push(currentValue);
+    rows.push(currentRow);
+  }
+
+  return rows;
 }
 
-const PROJECTS: Project[] = projectsCsv
-  .trim()
-  .split(/\r?\n/)
-  .slice(1)
-  .map((row) => {
-    const [title, section, shortDescription, description, tags, image] = parseCsvRow(row);
-    // Parse comma-separated image paths, resolve each one
-    const parsedImages = image
-      ? image.split(",").map((s) => resolveImagePath(s)).filter(Boolean)
-      : [];
-    const fallbackImages = DEFAULT_PROJECT_IMAGES[title] || [];
-    const images = parsedImages.length > 0 ? parsedImages : fallbackImages;
-    return {
-      title,
-      section: section as ProjectSection,
-      shortDescription,
-      description,
-      tags: tags ? tags.split(";").map((tag) => tag.trim()) : [],
-      images,
-    };
-  });
+const parsedCsvRows = parseCSV(projectsCsv).slice(1);
+
+const PROJECTS: Project[] = parsedCsvRows.map((row) => {
+  const [title, section, shortDescription, description, tags, image, period, longDescription] = row;
+  const parsedImages = image
+    ? image.split(",").map((s) => resolveImagePath(s)).filter(Boolean)
+    : [];
+  const fallbackImages = DEFAULT_PROJECT_IMAGES[title] || [];
+  const images = parsedImages.length > 0 ? parsedImages : fallbackImages;
+
+  return {
+    title: (title || "").trim(),
+    section: (section || "Personal Projects").trim() as ProjectSection,
+    period: period && period.trim().toLowerCase() !== "none" ? period.trim() : "",
+    shortDescription: (shortDescription || "").trim(),
+    description: (description || "").trim(),
+    tags: tags ? tags.split(";").map((tag) => tag.trim()).filter(Boolean) : [],
+    images,
+    longDescription: (longDescription || "").trim(),
+  };
+});
 
 // ─── IMAGE CAROUSEL ───────────────────────────────────────────────────────────
 
-function ImageCarousel({ images, alt }: { images: string[]; alt: string }) {
+function ImageCarousel({ images, alt, isExpanded = false }: { images: string[]; alt: string; isExpanded?: boolean }) {
   const [idx, setIdx] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const hasMultiple = images.length > 1;
 
-  // If no images at all, show placeholder
   if (images.length === 0) {
     return (
       <div
         className="relative w-full overflow-hidden rounded-lg mb-4"
         style={{
-          aspectRatio: "16 / 10",
+          aspectRatio: isExpanded ? "16 / 11" : "16 / 10",
           background: "rgba(0, 0, 0, 0.35)",
           border: "1px solid rgba(255, 255, 255, 0.06)",
           display: "flex",
@@ -130,7 +148,7 @@ function ImageCarousel({ images, alt }: { images: string[]; alt: string }) {
     <div
       className="relative w-full overflow-hidden rounded-lg mb-4"
       style={{
-        aspectRatio: "16 / 10",
+        aspectRatio: isExpanded ? "16 / 11" : "16 / 10",
         background: "rgba(0, 0, 0, 0.45)",
         border: "1px solid rgba(255, 255, 255, 0.08)",
       }}
@@ -142,10 +160,9 @@ function ImageCarousel({ images, alt }: { images: string[]; alt: string }) {
         alt={`${alt} – ${idx + 1}`}
         loading="lazy"
         className="w-full h-full object-cover transition-all duration-500 ease-out"
-        style={{ transform: isHovered ? "scale(1.04)" : "scale(1)" }}
+        style={{ transform: isHovered ? "scale(1.03)" : "scale(1)" }}
         onError={(e) => {
           const target = e.currentTarget;
-          // Try next image or fallback
           if (idx < images.length - 1) {
             setIdx(idx + 1);
           } else {
@@ -154,7 +171,6 @@ function ImageCarousel({ images, alt }: { images: string[]; alt: string }) {
         }}
       />
 
-      {/* Gradient overlay */}
       <div
         style={{
           position: "absolute",
@@ -164,10 +180,8 @@ function ImageCarousel({ images, alt }: { images: string[]; alt: string }) {
         }}
       />
 
-      {/* Carousel arrows – only visible on hover when multiple images */}
       {hasMultiple && (
         <>
-          {/* Left arrow */}
           <button
             type="button"
             onClick={(e) => {
@@ -203,7 +217,6 @@ function ImageCarousel({ images, alt }: { images: string[]; alt: string }) {
             ‹
           </button>
 
-          {/* Right arrow */}
           <button
             type="button"
             onClick={(e) => {
@@ -239,7 +252,6 @@ function ImageCarousel({ images, alt }: { images: string[]; alt: string }) {
             ›
           </button>
 
-          {/* Dot indicators */}
           <div
             style={{
               position: "absolute",
@@ -249,7 +261,7 @@ function ImageCarousel({ images, alt }: { images: string[]; alt: string }) {
               display: "flex",
               gap: "5px",
               zIndex: 2,
-              opacity: isHovered ? 1 : 0.5,
+              opacity: isHovered ? 1 : 0.6,
               transition: "opacity 0.25s ease",
             }}
           >
@@ -276,7 +288,6 @@ function ImageCarousel({ images, alt }: { images: string[]; alt: string }) {
             ))}
           </div>
 
-          {/* Image counter badge */}
           <span
             style={{
               position: "absolute",
@@ -413,9 +424,13 @@ function Hero() {
     };
   }, []);
 
+  // ── AANPASBAAR: RUIMTES & HOOGTES VAN DE START (HERO SECTIE) ──────────────
+  // De ruimte boven (onder de navbar) en onder (boven Explore) staat nu exact
+  // afgesteld op 1/4 van de totale content/fotoblok-hoogte (~105px).
+  // ────────────────────────────────────────────────────────────────────────────
   return (
-    <section style={{ position: "relative", minHeight: "82vh", display: "flex", alignItems: "center", overflow: "hidden" }}>
-      {/* Background photo */}
+    <section style={{ position: "relative", overflow: "hidden" }}>
+      {/* Background photo 1 (wolken lucht) */}
       <img
         ref={bgRef}
         src={bgPhoto}
@@ -436,23 +451,29 @@ function Hero() {
         pointerEvents: "none",
       }} />
 
-      {/* Content */}
-      <div className="relative px-6 pt-14 w-full max-w-6xl mx-auto">
-        <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center py-12 lg:py-16">
+      {/* Content — Exact 1/4 van de content/fotoblok-hoogte erboven en eronder */}
+      <div
+        className="relative px-6 w-full max-w-6xl mx-auto"
+        style={{
+          paddingTop: "calc(3.5rem + clamp(60px, 12vw, 105px))",
+          paddingBottom: "clamp(60px, 12vw, 105px)",
+        }}
+      >
+        <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-14 items-center">
           <div>
-            <div className="flex items-center gap-3 mb-8">
+            <div className="flex items-center gap-3 mb-5">
               <span className="block w-8 h-px" style={{ background: "#dda957" }} />
               <span style={{ color: "#dda957", fontFamily: "var(--font-body)", fontSize: "0.7rem", letterSpacing: "0.15em", textTransform: "uppercase" }}>
                 Delft, Netherlands · 2026
               </span>
             </div>
-            <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, color: "#f4f1eb", fontSize: "clamp(3rem, 8vw, 5.5rem)", lineHeight: 1, letterSpacing: "-0.045em", marginBottom: "1.5rem", textShadow: "0 2px 24px rgba(0,0,0,0.4)" }}>
+            <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 500, color: "#f4f1eb", fontSize: "clamp(2.75rem, 6.5vw, 5rem)", lineHeight: 1, letterSpacing: "-0.045em", marginBottom: "1.25rem", textShadow: "0 2px 24px rgba(0,0,0,0.4)" }}>
               Kit <span style={{ color: "#dda957" }}>Kother</span>
             </h1>
-            <p style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "rgba(244,241,235,0.8)", fontSize: "clamp(1rem, 2.5vw, 1.2rem)", lineHeight: 1.55, marginBottom: "1.75rem", maxWidth: "38ch" }}>
+            <p style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "rgba(244,241,235,0.85)", fontSize: "clamp(1rem, 2.2vw, 1.15rem)", lineHeight: 1.5, marginBottom: "1.25rem", maxWidth: "38ch" }}>
               {ME.tagline}
             </p>
-            <p style={{ fontFamily: "var(--font-body)", fontWeight: 300, color: "rgba(244,241,235,0.68)", fontSize: "0.9rem", lineHeight: 1.8, maxWidth: "44ch", marginBottom: "2rem" }}>
+            <p style={{ fontFamily: "var(--font-body)", fontWeight: 300, color: "rgba(244,241,235,0.68)", fontSize: "0.9rem", lineHeight: 1.75, maxWidth: "44ch", marginBottom: "1.75rem" }}>
               {ME.bio}
             </p>
             <div className="flex gap-6">
@@ -466,33 +487,24 @@ function Hero() {
             </div>
           </div>
 
-          <div className="flex justify-center lg:justify-end">
+          <div className="flex flex-col items-center lg:items-end justify-center">
             <div style={{ position: "relative" }}>
-              <div style={{ position: "absolute", inset: 0, transform: "translate(10px, 10px)", border: "1px solid #dda957", borderRadius: "4px", opacity: 0.55 }} />
+              <div style={{ position: "absolute", inset: 0, transform: "translate(8px, 8px)", border: "1px solid #dda957", borderRadius: "4px", opacity: 0.55 }} />
               <img src={headshot} alt="Kit Kother"
-                style={{ width: "clamp(220px, 32vw, 360px)", aspectRatio: "3/4", objectFit: "cover", objectPosition: "center top", borderRadius: "4px", display: "block", filter: "brightness(0.9) contrast(1.02)", position: "relative" }}
+                style={{ width: "clamp(200px, 28vw, 320px)", aspectRatio: "3/4", objectFit: "cover", objectPosition: "center top", borderRadius: "4px", display: "block", filter: "brightness(0.9) contrast(1.02)", position: "relative" }}
               />
             </div>
+            <p style={{ marginTop: "0.85rem", fontFamily: "var(--font-body)", fontSize: "0.65rem", color: "rgba(240,237,232,0.3)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              Photo by Kit Kother
+            </p>
           </div>
         </div>
-
-        {/* Photo credit — subtle, bottom right */}
-        <p style={{ position: "absolute", bottom: "0.75rem", right: "1.5rem", fontFamily: "var(--font-body)", fontSize: "0.65rem", color: "rgba(240,237,232,0.25)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-          Photo by Kit Kother
-        </p>
       </div>
     </section>
   );
 }
 
 // ─── THREE PANELS / PROJECTS SECTION ──────────────────────────────────────────
-
-const CATEGORIES: { id: "all" | ProjectSection; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "Education", label: "Education" },
-  { id: "Career", label: "Career" },
-  { id: "Personal Projects", label: "Personal Projects" },
-];
 
 const SECTION_ACCENTS: Record<ProjectSection, string> = {
   "Education": "#e09b45",
@@ -502,9 +514,12 @@ const SECTION_ACCENTS: Record<ProjectSection, string> = {
 
 function ThreePanels() {
   const [activeCategory, setActiveCategory] = useState<"all" | ProjectSection>("all");
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [isFilterExpanded, setIsFilterExpanded] = useState<boolean>(false);
+  const [expandedProject, setExpandedProject] = useState<string | null>(null);
+
   const [renderedCategory, setRenderedCategory] = useState<"all" | ProjectSection>("all");
-  const [renderedTag, setRenderedTag] = useState<string | null>(null);
+  const [renderedTags, setRenderedTags] = useState<string[]>([]);
   const [isExiting, setIsExiting] = useState(false);
 
   const activeCategoryRef = useRef<"all" | ProjectSection>("all");
@@ -526,7 +541,7 @@ function ThreePanels() {
       if (!el || !cardRowRef.current) return;
 
       const { top } = el.getBoundingClientRect();
-      const stickyTop = 56; // 3.5rem navbar height
+      const stickyTop = 56;
       const collapseDistance = 160;
       const scrolledPast = stickyTop - top;
       const progress = Math.max(0, Math.min(1, scrolledPast / collapseDistance));
@@ -536,7 +551,6 @@ function ThreePanels() {
 
       const isMobile = window.innerWidth < 768;
 
-      // Card row height: collapses from 210px to 54px
       const maxH = 210;
       const minH = 54;
       const h = maxH - (maxH - minH) * cp;
@@ -561,7 +575,6 @@ function ThreePanels() {
         }
       });
 
-      // Title font size: 20px -> 13.5px
       const maxFont = 20;
       const minFont = 13.5;
       const fontSize = maxFont - (maxFont - minFont) * cp;
@@ -569,7 +582,6 @@ function ThreePanels() {
         if (el) el.style.fontSize = `${fontSize}px`;
       });
 
-      // Subtopics chips fade out as it collapses
       const subOp = Math.max(0, 1 - cp * 2.2);
       subtopicRefs.current.forEach(el => {
         if (el) {
@@ -578,7 +590,6 @@ function ThreePanels() {
         }
       });
 
-      // Selected outline indicator
       selectedIndicatorRefs.current.forEach((el, i) => {
         if (el) el.style.opacity = (PANEL_STYLES[i].label === activeCategoryRef.current) ? "0.6" : "0";
       });
@@ -600,83 +611,103 @@ function ThreePanels() {
     };
   }, []);
 
-  const handleSelectCategory = (catId: "all" | ProjectSection) => {
-    const isReset = catId === activeCategory && selectedTag !== null;
-    if (catId === activeCategory && !isReset) return;
-
-    activeCategoryRef.current = catId;
-    setActiveCategory(catId);
-    setSelectedTag(null);
-
+  const triggerTransition = (targetCategory: "all" | ProjectSection, nextTags: string[]) => {
     if (transitionTimeoutRef.current) {
       clearTimeout(transitionTimeoutRef.current);
     }
-
     setIsExiting(true);
     transitionTimeoutRef.current = window.setTimeout(() => {
-      setRenderedCategory(catId);
-      setRenderedTag(null);
+      setRenderedCategory(targetCategory);
+      setRenderedTags(nextTags);
       setIsExiting(false);
-    }, 220);
+    }, 180);
   };
 
   const handleSelectNode = (id: number) => {
     const panel = PANEL_STYLES[id];
-    handleSelectCategory(panel.label);
-  };
-
-  const handleTagClick = (tag: string | null, section?: ProjectSection) => {
-    const targetCategory = section !== undefined ? section : activeCategory;
-    const isDeselect = targetCategory === activeCategory && (tag === null || selectedTag === tag);
-    const nextTag = isDeselect ? null : tag;
-
+    const isSame = activeCategory === panel.label;
+    const targetCategory = isSame ? "all" : panel.label;
     activeCategoryRef.current = targetCategory;
     setActiveCategory(targetCategory);
-    setSelectedTag(nextTag);
-
-    if (transitionTimeoutRef.current) {
-      clearTimeout(transitionTimeoutRef.current);
-    }
-
-    setIsExiting(true);
-    transitionTimeoutRef.current = window.setTimeout(() => {
-      setRenderedCategory(targetCategory);
-      setRenderedTag(nextTag);
-      setIsExiting(false);
-    }, 220);
+    triggerTransition(targetCategory, selectedTags);
   };
 
+  // Multi-select toggle for tags & titles
+  const handleToggleTag = (tag: string) => {
+    const isSelected = selectedTags.includes(tag);
+    const nextTags = isSelected
+      ? selectedTags.filter((t) => t !== tag)
+      : [...selectedTags, tag];
+
+    setSelectedTags(nextTags);
+    triggerTransition(activeCategory, nextTags);
+  };
+
+  const handleClearFilters = () => {
+    setSelectedTags([]);
+    triggerTransition(activeCategory, []);
+  };
+
+  // Derive relevant tags according to current category
+  const relevantProjects = activeCategory === "all"
+    ? PROJECTS
+    : PROJECTS.filter((p) => p.section === activeCategory);
+
+  const availableTags = Array.from(
+    new Set(
+      relevantProjects.flatMap((p) => [...p.tags, p.title])
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  // Filter displayed projects based on category and multi-select tags (union filter)
   const displayedProjects = PROJECTS.filter((project) => {
     if (renderedCategory !== "all" && project.section !== renderedCategory) {
       return false;
     }
-    if (!renderedTag) {
+    if (renderedTags.length === 0) {
       return true;
     }
-    return project.title === renderedTag || project.tags.includes(renderedTag);
+    // Matches if ANY selected tag matches project title or one of its tags
+    return renderedTags.some((tag) => project.title === tag || project.tags.includes(tag));
   });
 
   return (
     <section id="panels" ref={scrollRef} style={{ position: "relative", minHeight: "100vh", paddingBottom: "4rem" }}>
-      {/* Landscape background photo covering the section */}
+      {/* Background landscape photo */}
       <img
         src={bg2Photo}
         alt=""
         aria-hidden="true"
         style={{
-          position: "absolute", inset: 0, width: "100%", height: "100%",
-          objectFit: "cover", objectPosition: "center bottom",
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          width: "100%",
+          height: "980px",
+          objectFit: "cover",
+          objectPosition: "center 30%",
           filter: "brightness(0.85) saturate(0.95)",
           pointerEvents: "none",
         }}
       />
-      {/* Top blend from sunset/slate into landscape */}
+
+      <div style={{
+        position: "absolute",
+        top: "620px",
+        left: 0,
+        right: 0,
+        height: "360px",
+        background: "linear-gradient(to bottom, transparent 0%, rgba(23,22,20,0.85) 60%, #171614 100%)",
+        pointerEvents: "none",
+      }} />
+
       <div style={{
         position: "absolute", top: 0, left: 0, right: 0, height: "260px",
         background: "linear-gradient(to bottom, #495d70 0%, rgba(73,93,112,0.42) 40%, transparent 100%)",
         pointerEvents: "none",
       }} />
-      {/* Bottom blend into contact section's warm charcoal */}
+
       <div style={{
         position: "absolute", bottom: 0, left: 0, right: 0, height: "320px",
         background: "linear-gradient(to bottom, transparent 0%, rgba(23,22,20,0.65) 50%, #171614 100%)",
@@ -692,116 +723,7 @@ function ThreePanels() {
           <span style={{ flex: 1, height: "1px", background: "#34312d" }} />
         </div>
 
-        {/* 1. FILTER BAR WITH "ALL" AND TAGS (Directly above the 3 nodes) */}
-        <div
-          className="mb-5 rounded-xl p-3 sm:p-4 backdrop-blur-md"
-          style={{
-            background: "linear-gradient(to bottom, rgba(23,22,20,0.95) 0%, rgba(23,22,20,0.85) 100%)",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
-            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.35)",
-          }}
-        >
-          {/* Top row: All (13), Education (7), Career (2), Personal Projects (4) */}
-          <div className="flex flex-nowrap md:flex-wrap items-center gap-2 sm:gap-3 overflow-x-auto custom-scroll pb-1">
-            {CATEGORIES.map((cat) => {
-              const isActive = activeCategory === cat.id;
-              const count =
-                cat.id === "all"
-                  ? PROJECTS.length
-                  : PROJECTS.filter((p) => p.section === cat.id).length;
-
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => handleSelectCategory(cat.id)}
-                  className={`category-tab-btn ${isActive ? "category-tab-btn-active" : "category-tab-btn-inactive"} shrink-0`}
-                  style={{
-                    fontFamily: "var(--font-body)",
-                    fontSize: "0.85rem",
-                    padding: "0.45rem 1rem",
-                    borderRadius: "6px",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    cursor: "pointer",
-                    position: "relative",
-                    userSelect: "none",
-                  }}
-                >
-                  <span style={{ fontWeight: isActive ? 600 : 400, color: isActive ? "#f4f1eb" : "#a39d94" }}>
-                    {cat.label}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: "0.7rem",
-                      padding: "0.1rem 0.45rem",
-                      borderRadius: "9999px",
-                      background: isActive ? "rgba(221, 169, 87, 0.2)" : "rgba(255, 255, 255, 0.06)",
-                      color: isActive ? "#dda957" : "#787268",
-                      fontWeight: 500,
-                    }}
-                  >
-                    {count}
-                  </span>
-
-                  {isActive && (
-                    <span
-                      style={{
-                        position: "absolute",
-                        bottom: "-1px",
-                        left: "10%",
-                        right: "10%",
-                        height: "2px",
-                        background: "#dda957",
-                        borderRadius: "9999px",
-                        boxShadow: "0 0 8px #dda957",
-                      }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Bottom row: FILTER: [ ✦ All ] [ Project Tags ... ] */}
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-3 pt-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-            <span style={{ fontFamily: "var(--font-body)", color: "#8a847b", fontSize: "0.7rem", textTransform: "uppercase", letterSpacing: "0.14em", marginRight: "4px" }}>
-              Filter:
-            </span>
-
-            {/* All tag pill */}
-            <button
-              type="button"
-              onClick={() => handleTagClick(null)}
-              className={`tag-pill ${selectedTag === null ? "tag-pill-active" : ""}`}
-              title={activeCategory === "all" ? "Show all projects" : `Show all ${activeCategory} projects`}
-            >
-              <span>✦ All</span>
-              <span style={{ opacity: 0.7, fontSize: "0.68rem" }}>
-                ({activeCategory === "all" ? PROJECTS.length : PROJECTS.filter((p) => p.section === activeCategory).length})
-              </span>
-            </button>
-
-            {/* Project pills */}
-            {(activeCategory === "all"
-              ? PROJECTS
-              : PROJECTS.filter((p) => p.section === activeCategory)
-            ).map((project) => (
-              <button
-                key={project.title}
-                type="button"
-                onClick={() => handleTagClick(project.title, project.section)}
-                className={`tag-pill ${selectedTag === project.title ? "tag-pill-active" : ""}`}
-                title={`Filter by: ${project.title}`}
-              >
-                {project.title}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 2. THE 3 NODES (Education, Career, Personal Projects) as they were before */}
+        {/* 1. THE 3 NODES (Education, Career, Personal Projects) */}
         <div
           style={{
             position: "sticky",
@@ -809,11 +731,6 @@ function ThreePanels() {
             zIndex: 30,
             paddingTop: "0.5rem",
             paddingBottom: "0.75rem",
-            backdropFilter: "blur(14px)",
-            background: "linear-gradient(to bottom, rgba(23,22,20,0.88) 0%, rgba(23,22,20,0.7) 85%, transparent 100%)",
-            margin: "0 -1.5rem",
-            paddingLeft: "1.5rem",
-            paddingRight: "1.5rem",
           }}
         >
           <div
@@ -831,7 +748,7 @@ function ThreePanels() {
                   key={p.id}
                   ref={el => { cardRefs.current[i] = el; }}
                   onClick={() => handleSelectNode(p.id)}
-                  className={`category-card snap-center shrink-0 md:shrink`}
+                  className="category-card snap-center shrink-0 md:shrink"
                   style={{
                     flex: 1,
                     background: p.bg,
@@ -844,13 +761,13 @@ function ThreePanels() {
                     justifyContent: "space-between",
                     overflow: "hidden",
                     position: "relative",
-                    boxShadow: isNodeActive ? `0 0 24px rgba(221, 169, 87, 0.24), 0 8px 30px rgba(0,0,0,0.4)` : "none",
-                    opacity: activeCategory === "all" ? 0.9 : isNodeActive ? 1 : 0.65,
+                    boxShadow: isNodeActive ? `0 0 20px ${p.accent}33, 0 6px 18px rgba(0,0,0,0.22)` : "none",
+                    opacity: activeCategory === "all" ? 1 : isNodeActive ? 1 : 0.84,
                     transition: "border 0.25s, opacity 0.25s, box-shadow 0.25s, flex-grow 0.2s ease-out",
                   }}
                   onMouseEnter={(e) => {
                     if (!isNodeActive) {
-                      e.currentTarget.style.borderColor = "rgba(221, 169, 87, 0.45)";
+                      e.currentTarget.style.borderColor = p.accent;
                       e.currentTarget.style.opacity = "0.9";
                     }
                   }}
@@ -861,7 +778,6 @@ function ThreePanels() {
                     }
                   }}
                 >
-                  {/* Selected outline indicator */}
                   <div
                     ref={el => { selectedIndicatorRefs.current[i] = el; }}
                     style={{
@@ -895,9 +811,9 @@ function ThreePanels() {
                     <span style={{
                       fontFamily: "var(--font-body)",
                       fontSize: "0.7rem",
-                      color: isNodeActive ? "#dda957" : "#787268",
-                      background: isNodeActive ? "rgba(221, 169, 87, 0.16)" : "rgba(0,0,0,0.3)",
-                      border: isNodeActive ? "1px solid rgba(221, 169, 87, 0.3)" : "1px solid transparent",
+                      color: isNodeActive ? p.accent : "#787268",
+                      background: isNodeActive ? `${p.accent}26` : "rgba(0,0,0,0.3)",
+                      border: isNodeActive ? `1px solid ${p.accent}4d` : "1px solid transparent",
                       padding: "0.15rem 0.55rem",
                       borderRadius: "9999px",
                       fontWeight: 500,
@@ -907,7 +823,7 @@ function ThreePanels() {
                     </span>
                   </div>
 
-                  {/* Subtopic chips */}
+                  {/* Subtopic chips inside nodes */}
                   <div
                     ref={el => { subtopicRefs.current[i] = el; }}
                     className="custom-scroll"
@@ -924,20 +840,23 @@ function ThreePanels() {
                     }}
                   >
                     {p.projects.map((project) => {
-                      const isTagActive = selectedTag === project.title;
+                      const isTagActive = selectedTags.includes(project.title);
                       return (
                         <button
                           key={project.title}
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleTagClick(project.title, p.label);
+                            handleToggleTag(project.title);
                           }}
-                          className={`tag-pill ${isTagActive ? "tag-pill-active" : ""}`}
+                          className="tag-pill"
                           style={{
-                            background: isTagActive ? "#dda957" : p.chip,
-                            borderColor: isTagActive ? "#dda957" : p.border,
+                            background: isTagActive ? p.accent : p.chip,
+                            borderColor: isTagActive ? p.accent : p.border,
                             color: isTagActive ? "#171614" : p.accent,
+                            fontWeight: isTagActive ? 600 : 400,
+                            boxShadow: isTagActive ? `0 2px 12px ${p.accent}66, 0 0 10px ${p.accent}33` : "none",
+                            transform: isTagActive ? "translateY(-1px)" : "none",
                           }}
                           title={`Filter by: ${project.title}`}
                         >
@@ -952,208 +871,599 @@ function ThreePanels() {
           </div>
         </div>
 
-        {/* 3. PROJECT CARDS IN NATURAL PAGE FLOW */}
-        <div ref={projectsListRef} style={{ paddingTop: "1.75rem", paddingBottom: "2rem" }}>
-          {/* Active filter status badge */}
-          {renderedTag && (
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-6 px-1">
-              <div className="flex items-center gap-2.5">
-                <span style={{ fontFamily: "var(--font-body)", color: "#a39d94", fontSize: "0.72rem", letterSpacing: "0.14em", textTransform: "uppercase" }}>
-                  Filtered by:
-                </span>
-                <div
-                  className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium"
-                  style={{ background: "rgba(221, 169, 87, 0.15)", border: "1px solid #dda957", color: "#dda957" }}
+        {/* 2. FILTER BUTTON & EXPANDABLE MULTI-SELECT FILTER BAR (DIRECTLY UNDER 3 NODES) */}
+        <div className="mt-3 mb-6">
+          <div
+            className="rounded-xl backdrop-blur-md transition-all duration-300"
+            style={{
+              background: "linear-gradient(to bottom, rgba(23,22,20,0.95) 0%, rgba(23,22,20,0.85) 100%)",
+              border: selectedTags.length > 0 ? "1px solid rgba(221, 169, 87, 0.45)" : "1px solid rgba(255, 255, 255, 0.08)",
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.35)",
+              padding: "0.85rem 1.25rem",
+              position: "relative",
+            }}
+          >
+            {/* Header / Toggle Row */}
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+                className="cursor-pointer inline-flex items-center gap-2.5 text-sm font-medium transition-colors"
+                style={{
+                  fontFamily: "var(--font-body)",
+                  color: isFilterExpanded || selectedTags.length > 0 ? "#dda957" : "#e5dfd5",
+                }}
+              >
+                <span
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-transform duration-300"
+                  style={{
+                    background: "rgba(221, 169, 87, 0.15)",
+                    border: "1px solid rgba(221, 169, 87, 0.3)",
+                    color: "#dda957",
+                  }}
                 >
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#dda957" }} />
-                  <span>{renderedTag}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleTagClick(null)}
-                    title="Clear filter (Show all)"
-                    className="ml-1 hover:text-white transition-colors cursor-pointer"
-                    aria-label="Clear filter"
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ transform: isFilterExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.25s" }}
                   >
-                    ✕
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                  </svg>
+                </span>
+                <span className="font-semibold tracking-wide">
+                  {isFilterExpanded ? "Hide Filters" : "Filter Options"}
+                </span>
+
+                {selectedTags.length > 0 && (
+                  <span
+                    className="ml-1 text-xs px-2 py-0.5 rounded-full font-bold"
+                    style={{
+                      background: "#dda957",
+                      color: "#171614",
+                    }}
+                  >
+                    {selectedTags.length} active
+                  </span>
+                )}
+
+                <span style={{ color: "#787268", fontSize: "0.75rem", marginLeft: "4px" }}>
+                  ({isFilterExpanded ? "Click to collapse" : "Click to expand & multi-select"})
+                </span>
+              </button>
+
+              {/* Stylish Cross Button on the Top Right of Filter Bar */}
+              {selectedTags.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearFilters}
+                  title="Clear all active filters"
+                  className="cursor-pointer flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all"
+                  style={{
+                    background: "rgba(221, 169, 87, 0.15)",
+                    border: "1px solid rgba(221, 169, 87, 0.35)",
+                    color: "#dda957",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(221, 169, 87, 0.3)";
+                    e.currentTarget.style.color = "#ffffff";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "rgba(221, 169, 87, 0.15)";
+                    e.currentTarget.style.color = "#dda957";
+                  }}
+                >
+                  <span className="text-sm leading-none font-bold">✕</span>
+                  <span className="hidden sm:inline">Clear all ({selectedTags.length})</span>
+                </button>
+              )}
+            </div>
+
+            {/* Active Selected Tags Pills Preview (When collapsed) */}
+            {!isFilterExpanded && selectedTags.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 mt-3 pt-3" style={{ borderTop: "1px solid rgba(255, 255, 255, 0.06)" }}>
+                <span style={{ fontSize: "0.7rem", color: "#8a847b", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                  Active:
+                </span>
+                {selectedTags.map((tag) => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => handleToggleTag(tag)}
+                    className="tag-pill tag-pill-active inline-flex items-center gap-1.5"
+                    style={{ fontSize: "0.74rem", padding: "0.2rem 0.55rem" }}
+                    title="Click to remove"
+                  >
+                    <span>{tag}</span>
+                    <span className="text-xs font-bold opacity-80 hover:opacity-100">✕</span>
                   </button>
+                ))}
+              </div>
+            )}
+
+            {/* Expandable Tag Cloud for Multi-Select */}
+            {isFilterExpanded && (
+              <div className="mt-4 pt-3" style={{ borderTop: "1px solid rgba(255, 255, 255, 0.08)" }}>
+                <div className="flex items-center justify-between mb-2.5">
+                  <span style={{ fontFamily: "var(--font-body)", color: "#a39d94", fontSize: "0.72rem", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                    Select one or more topics / tags to combine:
+                  </span>
+                  {selectedTags.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearFilters}
+                      className="text-xs hover:underline cursor-pointer"
+                      style={{ color: "#dda957" }}
+                    >
+                      Deselect all
+                    </button>
+                  )}
                 </div>
-                <span style={{ fontFamily: "var(--font-body)", color: "#787268", fontSize: "0.75rem" }}>
-                  ({displayedProjects.length} {displayedProjects.length === 1 ? "project" : "projects"})
+
+                <div className="flex flex-wrap gap-2 max-h-64 overflow-y-auto custom-scroll pr-1">
+                  {availableTags.map((tag) => {
+                    const isSelected = selectedTags.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => handleToggleTag(tag)}
+                        className={`tag-pill ${isSelected ? "tag-pill-active" : ""}`}
+                        style={{
+                          fontSize: "0.78rem",
+                          padding: "0.3rem 0.75rem",
+                          borderRadius: "9999px",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          transition: "all 0.18s ease",
+                        }}
+                      >
+                        <span>{tag}</span>
+                        {isSelected && <span className="font-bold text-xs">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 3. PROJECT CARDS IN NATURAL PAGE FLOW */}
+        <div ref={projectsListRef} style={{ paddingTop: "0.5rem", paddingBottom: "2rem" }}>
+          {/* Active filter status badge */}
+          {renderedTags.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6 px-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span style={{ fontFamily: "var(--font-body)", color: "#a39d94", fontSize: "0.72rem", letterSpacing: "0.14em", textTransform: "uppercase" }}>
+                  Filtering by ({renderedTags.length}):
+                </span>
+                {renderedTags.map((t) => (
+                  <div
+                    key={t}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium"
+                    style={{ background: "rgba(221, 169, 87, 0.18)", border: "1px solid #dda957", color: "#dda957" }}
+                  >
+                    <span>{t}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleTag(t)}
+                      title={`Remove filter "${t}"`}
+                      className="ml-0.5 hover:text-white transition-colors cursor-pointer text-xs"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <span style={{ fontFamily: "var(--font-body)", color: "#787268", fontSize: "0.75rem", marginLeft: "6px" }}>
+                  ({displayedProjects.length} {displayedProjects.length === 1 ? "project" : "projects"} match)
                 </span>
               </div>
 
               <button
                 type="button"
-                onClick={() => handleTagClick(null)}
-                className="cursor-pointer text-xs transition-colors flex items-center gap-1.5"
-                style={{ fontFamily: "var(--font-body)", color: "#dda957", textDecoration: "underline", textUnderlineOffset: "4px" }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#f4f1eb")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#dda957")}
+                onClick={handleClearFilters}
+                className="cursor-pointer text-xs transition-colors flex items-center gap-1"
+                style={{
+                  fontFamily: "var(--font-body)",
+                  color: "#dda957",
+                  textDecoration: "underline",
+                  textUnderlineOffset: "4px",
+                }}
               >
-                <span>Show all {renderedCategory === "all" ? "Projects" : renderedCategory}</span>
-                <span>↗</span>
+                <span>Clear filters</span>
+                <span>✕</span>
               </button>
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 items-stretch">
             {displayedProjects.map((project, idx) => {
-              const isCardSelected = selectedTag === project.title;
+              const isCardSelected = renderedTags.includes(project.title);
               const accentColor = SECTION_ACCENTS[project.section] || "#dda957";
+              const isExpanded = expandedProject === project.title;
 
               return (
                 <div
                   key={`${renderedCategory}-${project.title}`}
-                  className={`group project-card ${isExiting ? "project-card-exit" : "project-card-enter"}`}
+                  className={`group project-card ${isExpanded ? "col-span-1 md:col-span-2" : "col-span-1"} ${isExiting ? "project-card-exit" : "project-card-enter"}`}
                   style={{
-                    animationDelay: isExiting ? "0ms" : `${idx * 40}ms`,
-                    background: "rgba(23, 22, 20, 0.72)",
-                    border: `1px solid ${isCardSelected ? "#dda957" : "rgba(255, 255, 255, 0.1)"}`,
-                    borderRadius: "10px",
-                    padding: "1.75rem",
+                    animationDelay: isExiting ? "0ms" : `${idx * 30}ms`,
+                    background: "rgba(23, 22, 20, 0.78)",
+                    border: isExpanded
+                      ? `2px solid ${accentColor}`
+                      : `1px solid ${isCardSelected ? "#dda957" : "rgba(255, 255, 255, 0.1)"}`,
+                    borderRadius: "12px",
+                    padding: isExpanded ? "2.25rem" : "1.75rem",
                     display: "flex",
                     flexDirection: "column",
                     justifyContent: "space-between",
                     backdropFilter: "blur(14px)",
-                    boxShadow: isCardSelected
-                      ? "0 10px 32px rgba(0,0,0,0.45), 0 0 20px rgba(221,169,87,0.28)"
-                      : "0 6px 24px rgba(0,0,0,0.32)",
-                    transition: "border 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease",
+                    boxShadow: isExpanded
+                      ? `0 16px 48px rgba(0,0,0,0.65), 0 0 24px ${accentColor}40`
+                      : isCardSelected
+                        ? "0 10px 32px rgba(0,0,0,0.45), 0 0 20px rgba(221,169,87,0.28)"
+                        : "0 6px 24px rgba(0,0,0,0.32)",
+                    transition: "all 0.35s ease",
+                    position: "relative",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "#dda957";
-                    e.currentTarget.style.boxShadow = `0 12px 36px rgba(0,0,0,0.5), 0 0 18px ${accentColor}30`;
+                    if (!isExpanded) {
+                      e.currentTarget.style.borderColor = "#dda957";
+                      e.currentTarget.style.boxShadow = `0 12px 36px rgba(0,0,0,0.5), 0 0 18px ${accentColor}30`;
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = isCardSelected ? "#dda957" : "rgba(255, 255, 255, 0.1)";
-                    e.currentTarget.style.boxShadow = isCardSelected
-                      ? "0 10px 32px rgba(0,0,0,0.45), 0 0 20px rgba(221,169,87,0.28)"
-                      : "0 6px 24px rgba(0,0,0,0.32)";
+                    if (!isExpanded) {
+                      e.currentTarget.style.borderColor = isCardSelected ? "#dda957" : "rgba(255, 255, 255, 0.1)";
+                      e.currentTarget.style.boxShadow = isCardSelected
+                        ? "0 10px 32px rgba(0,0,0,0.45), 0 0 20px rgba(221,169,87,0.28)"
+                        : "0 6px 24px rgba(0,0,0,0.32)";
+                    }
                   }}
                 >
-                  <div className="flex flex-col">
-                    {/* 1. CATEGORY */}
-                    <div className="flex items-center justify-between gap-2 mb-3">
-                      <span
-                        style={{
-                          fontFamily: "var(--font-body)",
-                          fontSize: "0.7rem",
-                          fontWeight: 600,
-                          letterSpacing: "0.1em",
-                          textTransform: "uppercase",
-                          color: accentColor,
-                          background: `${accentColor}18`,
-                          border: `1px solid ${accentColor}40`,
-                          padding: "0.22rem 0.65rem",
-                          borderRadius: "9999px",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "6px",
-                        }}
-                      >
-                        <span style={{ width: "6px", height: "6px", borderRadius: "9999px", background: accentColor }} />
-                        {project.section}
-                      </span>
-                      <span
-                        style={{
-                          fontFamily: "var(--font-body)",
-                          fontSize: "0.72rem",
-                          color: "#8a847b",
-                          letterSpacing: "0.08em",
-                          textTransform: "uppercase",
-                          fontWeight: 500,
-                          maxWidth: "60%",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                        title={project.shortDescription}
-                      >
-                        {project.shortDescription}
-                      </span>
-                    </div>
-
-                    {/* 2. TITLE */}
-                    <h3
+                  {/* Top-right close button when expanded */}
+                  {isExpanded && (
+                    <button
+                      type="button"
+                      onClick={() => setExpandedProject(null)}
+                      title="Collapse card"
+                      className="absolute top-5 right-5 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold cursor-pointer transition-transform duration-200 hover:scale-110"
                       style={{
-                        fontFamily: "var(--font-display)",
-                        fontWeight: 600,
+                        background: "rgba(255,255,255,0.08)",
+                        border: "1px solid rgba(255,255,255,0.2)",
                         color: "#f4f1eb",
-                        fontSize: "1.45rem",
-                        lineHeight: 1.3,
-                        marginBottom: "1rem",
+                        zIndex: 10,
                       }}
                     >
-                      {project.title}
-                    </h3>
+                      ✕
+                    </button>
+                  )}
 
-                    {/* 3. PICTURE CAROUSEL */}
-                    <ImageCarousel images={project.images} alt={project.title} />
+                  {/* Normal Card View */}
+                  {!isExpanded && (
+                    <div className="flex flex-col h-full justify-between">
+                      <div className="flex flex-col">
+                        {/* CATEGORY & SHORT DESCRIPTION (fixed height) */}
+                        <div className="flex items-center justify-between gap-2 mb-3 h-7">
+                          <span
+                            style={{
+                              fontFamily: "var(--font-body)",
+                              fontSize: "0.7rem",
+                              fontWeight: 600,
+                              letterSpacing: "0.1em",
+                              textTransform: "uppercase",
+                              color: accentColor,
+                              background: `${accentColor}18`,
+                              border: `1px solid ${accentColor}40`,
+                              padding: "0.22rem 0.65rem",
+                              borderRadius: "9999px",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              flexShrink: 0,
+                            }}
+                          >
+                            <span style={{ width: "6px", height: "6px", borderRadius: "9999px", background: accentColor }} />
+                            {project.section}
+                          </span>
+                          <span
+                            style={{
+                              fontFamily: "var(--font-body)",
+                              fontSize: "0.72rem",
+                              color: "#8a847b",
+                              letterSpacing: "0.08em",
+                              textTransform: "uppercase",
+                              fontWeight: 500,
+                              maxWidth: "60%",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                            title={project.shortDescription}
+                          >
+                            {project.shortDescription}
+                          </span>
+                        </div>
 
-                    {/* 4. DESCRIPTION */}
-                    <p
-                      style={{
-                        fontFamily: "var(--font-body)",
-                        fontWeight: 300,
-                        color: "#b8b2a7",
-                        fontSize: "0.92rem",
-                        lineHeight: 1.75,
-                        marginBottom: "1.25rem",
-                      }}
-                    >
-                      {project.description}
-                    </p>
-                  </div>
+                        {/* TITLE & PERIOD (fixed height container so carousels align perfectly) */}
+                        <div className="mb-3" style={{ minHeight: "4rem" }}>
+                          <h3
+                            style={{
+                              fontFamily: "var(--font-display)",
+                              fontWeight: 600,
+                              color: "#f4f1eb",
+                              fontSize: "1.45rem",
+                              lineHeight: 1.25,
+                              marginBottom: "0.25rem",
+                            }}
+                          >
+                            {project.title}
+                          </h3>
+                          {project.period ? (
+                            <span
+                              style={{
+                                fontFamily: "var(--font-body)",
+                                fontSize: "0.75rem",
+                                color: "#a39d94",
+                                letterSpacing: "0.04em",
+                                display: "block",
+                              }}
+                            >
+                              {project.period}
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                display: "block",
+                                height: "1.125rem",
+                                visibility: "hidden",
+                              }}
+                            >
+                              -
+                            </span>
+                          )}
+                        </div>
 
-                  {/* 5. TAGS */}
-                  <div
-                    className="flex flex-wrap gap-2 mt-auto pt-3"
-                    style={{ borderTop: "1px solid rgba(255, 255, 255, 0.06)" }}
-                  >
-                    {project.tags.map((tag) => {
-                      const isTagActive = selectedTag === tag;
-                      return (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleTagClick(tag, project.section);
-                          }}
-                          title={`Filter by tag: ${tag}`}
-                          className="tag-pill"
+                        {/* PICTURE CAROUSEL (exact 16/10 aspect ratio on every card) */}
+                        <ImageCarousel images={project.images} alt={project.title} />
+
+                        {/* SHORT/SUMMARY DESCRIPTION (uniform height block with line-clamp) */}
+                        <p
+                          className="line-clamp-3"
                           style={{
                             fontFamily: "var(--font-body)",
-                            fontSize: "0.72rem",
-                            color: isTagActive ? "#171614" : "#a39d94",
-                            border: `1px solid ${isTagActive ? "#dda957" : "rgba(255,255,255,0.08)"}`,
-                            background: isTagActive ? "#dda957" : "rgba(255,255,255,0.03)",
-                            padding: "0.22rem 0.6rem",
-                            borderRadius: "9999px",
-                            cursor: "pointer",
-                            transition: "all 0.2s ease",
-                            fontWeight: isTagActive ? 600 : 400,
+                            fontWeight: 300,
+                            color: "#b8b2a7",
+                            fontSize: "0.92rem",
+                            lineHeight: 1.65,
+                            minHeight: "4.5rem",
+                            marginBottom: "1rem",
+                          }}
+                          title={project.description}
+                        >
+                          {project.description}
+                        </p>
+                      </div>
+
+                      {/* BOTTOM SECTION: TAGS & READ MORE ACTION (always aligned at bottom) */}
+                      <div className="mt-auto pt-3" style={{ borderTop: "1px solid rgba(255, 255, 255, 0.06)" }}>
+                        <div
+                          className="flex flex-wrap gap-1.5 mb-3.5 custom-scroll overflow-hidden"
+                          style={{ height: "3.75rem", alignContent: "flex-start" }}
+                        >
+                          {project.tags.map((tag) => {
+                            const isTagActive = selectedTags.includes(tag);
+                            return (
+                              <button
+                                key={tag}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleTag(tag);
+                                }}
+                                title={`Filter by tag: ${tag}`}
+                                className="tag-pill"
+                                style={{
+                                  fontFamily: "var(--font-body)",
+                                  fontSize: "0.72rem",
+                                  color: isTagActive ? "#171614" : "#a39d94",
+                                  border: `1px solid ${isTagActive ? "#dda957" : "rgba(255,255,255,0.08)"}`,
+                                  background: isTagActive ? "#dda957" : "rgba(255,255,255,0.03)",
+                                  padding: "0.22rem 0.6rem",
+                                  borderRadius: "9999px",
+                                  cursor: "pointer",
+                                  transition: "all 0.2s ease",
+                                  fontWeight: isTagActive ? 600 : 400,
+                                }}
+                              >
+                                {tag}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Read More button */}
+                        <button
+                          type="button"
+                          onClick={() => setExpandedProject(project.title)}
+                          className="w-full py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 cursor-pointer font-medium text-sm transition-all duration-200"
+                          style={{
+                            background: "rgba(255, 255, 255, 0.04)",
+                            border: "1px solid rgba(255, 255, 255, 0.12)",
+                            color: "#dda957",
                           }}
                           onMouseEnter={(e) => {
-                            if (!isTagActive) {
-                              e.currentTarget.style.borderColor = "#dda957";
-                              e.currentTarget.style.color = "#f4f1eb";
-                              e.currentTarget.style.background = "rgba(221,169,87,0.12)";
-                            }
+                            e.currentTarget.style.background = "rgba(221, 169, 87, 0.15)";
+                            e.currentTarget.style.borderColor = "#dda957";
                           }}
                           onMouseLeave={(e) => {
-                            if (!isTagActive) {
-                              e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
-                              e.currentTarget.style.color = "#a39d94";
-                              e.currentTarget.style.background = "rgba(255,255,255,0.03)";
-                            }
+                            e.currentTarget.style.background = "rgba(255, 255, 255, 0.04)";
+                            e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.12)";
                           }}
                         >
-                          {tag}
+                          <span>Read more</span>
+                          <span>→</span>
                         </button>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Expanded Card View (Twice as wide & twice as tall with longDescription) */}
+                  {isExpanded && (
+                    <div className="w-full flex flex-col">
+                      {/* Top Header */}
+                      <div className="flex items-center gap-3 mb-3 pr-10">
+                        <span
+                          style={{
+                            fontFamily: "var(--font-body)",
+                            fontSize: "0.75rem",
+                            fontWeight: 600,
+                            letterSpacing: "0.1em",
+                            textTransform: "uppercase",
+                            color: accentColor,
+                            background: `${accentColor}18`,
+                            border: `1px solid ${accentColor}40`,
+                            padding: "0.25rem 0.75rem",
+                            borderRadius: "9999px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                          }}
+                        >
+                          <span style={{ width: "6px", height: "6px", borderRadius: "9999px", background: accentColor }} />
+                          {project.section}
+                        </span>
+                        <span style={{ color: "#a39d94", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                          {project.shortDescription}
+                        </span>
+                        {project.period && (
+                          <span style={{ color: "#787268", fontSize: "0.82rem" }}>
+                            • {project.period}
+                          </span>
+                        )}
+                      </div>
+
+                      <h3
+                        style={{
+                          fontFamily: "var(--font-display)",
+                          fontWeight: 600,
+                          color: "#f4f1eb",
+                          fontSize: "clamp(1.75rem, 3.5vw, 2.35rem)",
+                          lineHeight: 1.25,
+                          marginBottom: "1.5rem",
+                        }}
+                      >
+                        {project.title}
+                      </h3>
+
+                      {/* 2-Column Layout inside expanded card for spacious height & width */}
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-6">
+                        {/* Left column: Carousel & Tags */}
+                        <div className="lg:col-span-5 flex flex-col">
+                          <ImageCarousel images={project.images} alt={project.title} isExpanded />
+
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {project.tags.map((tag) => {
+                              const isTagActive = selectedTags.includes(tag);
+                              return (
+                                <button
+                                  key={tag}
+                                  type="button"
+                                  onClick={() => handleToggleTag(tag)}
+                                  className="tag-pill"
+                                  style={{
+                                    fontFamily: "var(--font-body)",
+                                    fontSize: "0.72rem",
+                                    color: isTagActive ? "#171614" : "#a39d94",
+                                    border: `1px solid ${isTagActive ? "#dda957" : "rgba(255,255,255,0.08)"}`,
+                                    background: isTagActive ? "#dda957" : "rgba(255,255,255,0.03)",
+                                    padding: "0.22rem 0.6rem",
+                                    borderRadius: "9999px",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  {tag}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Right column: Long Description */}
+                        <div className="lg:col-span-7 flex flex-col justify-start">
+                          <div
+                            className="p-5 rounded-xl mb-4"
+                            style={{
+                              background: "rgba(0, 0, 0, 0.28)",
+                              border: "1px solid rgba(255, 255, 255, 0.05)",
+                            }}
+                          >
+                            <span style={{ color: "#dda957", fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 600, display: "block", marginBottom: "0.6rem" }}>
+                              Project Overview
+                            </span>
+                            <p style={{ fontFamily: "var(--font-body)", fontWeight: 300, color: "#d5cfc5", fontSize: "0.98rem", lineHeight: 1.8 }}>
+                              {project.description}
+                            </p>
+                          </div>
+
+                          <div className="space-y-4">
+                            <span style={{ color: "#a39d94", fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 600, display: "block" }}>
+                              Detailed Breakdown
+                            </span>
+                            {(project.longDescription || project.description)
+                              .split(/\n\n+|\n/)
+                              .filter((p) => p.trim().length > 0)
+                              .map((paragraph, pIdx) => (
+                                <p
+                                  key={pIdx}
+                                  style={{
+                                    fontFamily: "var(--font-body)",
+                                    fontWeight: 300,
+                                    color: "#cac4b8",
+                                    fontSize: "0.95rem",
+                                    lineHeight: 1.85,
+                                  }}
+                                >
+                                  {paragraph.trim()}
+                                </p>
+                              ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bottom close button */}
+                      <div className="flex justify-end pt-4 border-t border-white/10">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedProject(null)}
+                          className="px-6 py-2.5 rounded-lg flex items-center gap-2 cursor-pointer font-medium text-sm transition-all"
+                          style={{
+                            background: "rgba(221, 169, 87, 0.15)",
+                            border: "1px solid #dda957",
+                            color: "#dda957",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "#dda957";
+                            e.currentTarget.style.color = "#171614";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "rgba(221, 169, 87, 0.15)";
+                            e.currentTarget.style.color = "#dda957";
+                          }}
+                        >
+                          <span>Show less</span>
+                          <span>↑</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1218,6 +1528,10 @@ function Footer() {
 // ─── APP ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  useEffect(() => {
+    document.title = "Kit Kother — Portfolio";
+  }, []);
+
   return (
     <div style={{ background: "#171614", minHeight: "100vh" }}>
       <Nav />
