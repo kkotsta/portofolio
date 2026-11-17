@@ -744,21 +744,6 @@ function ThreePanels() {
                   >
                     {count}
                   </span>
-
-                  {isActive && (
-                    <span
-                      style={{
-                        position: "absolute",
-                        bottom: "-1px",
-                        left: "10%",
-                        right: "10%",
-                        height: "2px",
-                        background: "#dda957",
-                        borderRadius: "9999px",
-                        boxShadow: "0 0 8px #dda957",
-                      }}
-                    />
-                  )}
                 </button>
               );
             })}
@@ -810,7 +795,7 @@ function ThreePanels() {
             paddingTop: "0.5rem",
             paddingBottom: "0.75rem",
             backdropFilter: "blur(14px)",
-            background: "linear-gradient(to bottom, rgba(23,22,20,0.88) 0%, rgba(23,22,20,0.7) 85%, transparent 100%)",
+            background: "transparent",
             margin: "0 -1.5rem",
             paddingLeft: "1.5rem",
             paddingRight: "1.5rem",
@@ -835,7 +820,7 @@ function ThreePanels() {
                   style={{
                     flex: 1,
                     background: p.bg,
-                    border: isNodeActive ? "2px solid #dda957" : `1px solid ${p.border}`,
+                    border: isNodeActive ? `2px solid ${p.accent}` : `1px solid ${p.border}`,
                     borderRadius: "8px",
                     padding: "0.85rem 1.1rem",
                     cursor: "pointer",
@@ -844,13 +829,13 @@ function ThreePanels() {
                     justifyContent: "space-between",
                     overflow: "hidden",
                     position: "relative",
-                    boxShadow: isNodeActive ? `0 0 24px rgba(221, 169, 87, 0.24), 0 8px 30px rgba(0,0,0,0.4)` : "none",
+                    boxShadow: isNodeActive ? `0 0 24px ${p.accent}33, 0 8px 30px rgba(0,0,0,0.4)` : "none",
                     opacity: activeCategory === "all" ? 0.9 : isNodeActive ? 1 : 0.65,
                     transition: "border 0.25s, opacity 0.25s, box-shadow 0.25s, flex-grow 0.2s ease-out",
                   }}
                   onMouseEnter={(e) => {
                     if (!isNodeActive) {
-                      e.currentTarget.style.borderColor = "rgba(221, 169, 87, 0.45)";
+                      e.currentTarget.style.borderColor = p.accent;
                       e.currentTarget.style.opacity = "0.9";
                     }
                   }}
@@ -895,9 +880,9 @@ function ThreePanels() {
                     <span style={{
                       fontFamily: "var(--font-body)",
                       fontSize: "0.7rem",
-                      color: isNodeActive ? "#dda957" : "#787268",
-                      background: isNodeActive ? "rgba(221, 169, 87, 0.16)" : "rgba(0,0,0,0.3)",
-                      border: isNodeActive ? "1px solid rgba(221, 169, 87, 0.3)" : "1px solid transparent",
+                      color: isNodeActive ? p.accent : "#787268",
+                      background: isNodeActive ? `${p.accent}1A` : "rgba(0,0,0,0.3)",
+                      border: isNodeActive ? `1px solid ${p.accent}66` : "1px solid transparent",
                       padding: "0.15rem 0.55rem",
                       borderRadius: "9999px",
                       fontWeight: 500,
@@ -935,9 +920,10 @@ function ThreePanels() {
                           }}
                           className={`tag-pill ${isTagActive ? "tag-pill-active" : ""}`}
                           style={{
-                            background: isTagActive ? "#dda957" : p.chip,
-                            borderColor: isTagActive ? "#dda957" : p.border,
-                            color: isTagActive ? "#171614" : p.accent,
+                            background: isTagActive ? p.accent : p.chip,
+                            borderColor: isTagActive ? p.accent : p.border,
+                            color: isTagActive ? "#121212" : p.accent,
+                            boxShadow: isTagActive ? `0 0 0 1px ${p.accent} inset, 0 0 16px ${p.accent}33` : "none",
                           }}
                           title={`Filter by: ${project.title}`}
                         >
