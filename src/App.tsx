@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import headshot from "@/imports/IMG_6839__1_.jpg";
 import bgPhoto from "@/imports/bg.jpg";
 import bg2Photo from "@/imports/bg2.jpg";
-import projectsCsv from "@/data/projects_portfolio_min.csv?raw";
+import projectsCsv from "@/data/projects_portfolio.csv?raw";
 
 // ─── DATA ─────────────────────────────────────────────────────────────────────
 
@@ -655,7 +655,7 @@ function ThreePanels() {
 
   const availableTags = Array.from(
     new Set(
-      relevantProjects.flatMap((p) => [...p.tags, p.title])
+      relevantProjects.flatMap((p) => p.tags)
     )
   ).sort((a, b) => a.localeCompare(b));
 
@@ -667,8 +667,8 @@ function ThreePanels() {
     if (renderedTags.length === 0) {
       return true;
     }
-    // Matches if ANY selected tag matches project title or one of its tags
-    return renderedTags.some((tag) => project.title === tag || project.tags.includes(tag));
+    // Matches if ANY selected tag is in the project's tags
+    return renderedTags.some((tag) => project.tags.includes(tag));
   });
 
   return (
@@ -839,15 +839,15 @@ function ThreePanels() {
                       paddingRight: "2px",
                     }}
                   >
-                    {p.projects.map((project) => {
-                      const isTagActive = selectedTags.includes(project.title);
+                    {Array.from(new Set(p.projects.flatMap((proj) => proj.tags))).map((tag) => {
+                      const isTagActive = selectedTags.includes(tag);
                       return (
                         <button
-                          key={project.title}
+                          key={tag}
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleToggleTag(project.title);
+                            handleToggleTag(tag);
                           }}
                           className="tag-pill"
                           style={{
@@ -858,9 +858,9 @@ function ThreePanels() {
                             boxShadow: isTagActive ? `0 2px 12px ${p.accent}66, 0 0 10px ${p.accent}33` : "none",
                             transform: isTagActive ? "translateY(-1px)" : "none",
                           }}
-                          title={`Filter by: ${project.title}`}
+                          title={`Filter by: ${tag}`}
                         >
-                          <span>{project.title}</span>
+                          <span>{tag}</span>
                         </button>
                       );
                     })}
