@@ -3,8 +3,16 @@ import { PROJECTS, SOFTWARE_TOOLS, ME, type Project, type ProjectSection } from 
 import headshot from "@/imports/IMG_6839__1_.jpg";
 import bgPhoto from "@/imports/bg.jpg";
 import bg2Photo from "@/imports/bg2.jpg";
+import bg3Photo from "@/imports/bg3.jpg";
 
-export type VariantTheme = "5A" | "5B" | "5C" | "5C-Sticky" | "5D";
+export type VariantTheme = "5A" | "5B" | "5C" | "5C-Sticky" | "5D" | "5E" | "5F";
+
+// 5F: one continuous background (hero bg.jpg + slate fade + bg2.jpg).
+// Total height of the stacked background layer in px.
+const F_HERO_H = 680;
+const F_OVERLAP = 0;
+const F_BG2_H = 1000;
+const F_TOTAL_H = F_HERO_H - F_OVERLAP + F_BG2_H;
 
 interface Layout5TemplateProps {
   variant: VariantTheme;
@@ -134,7 +142,7 @@ export default function Layout5Template({ variant }: Layout5TemplateProps) {
   };
 
   const isLight = variant === "5B" || variant === "5D";
-  const isPhotoVariant = variant === "5C" || variant === "5C-Sticky";
+  const isPhotoVariant = variant === "5C" || variant === "5C-Sticky" || variant === "5F";
 
   let containerStyle: React.CSSProperties = {
     minHeight: "100vh",
@@ -148,6 +156,8 @@ export default function Layout5Template({ variant }: Layout5TemplateProps) {
     containerStyle = { ...containerStyle, background: "#fcfbf9", color: "#1c1917" };
   } else if (isPhotoVariant) {
     containerStyle = { ...containerStyle, background: "#171614", color: "#f4f1eb" };
+  } else if (variant === "5E") {
+    containerStyle = { ...containerStyle, background: "#151311", color: "#f4f1eb" };
   } else if (variant === "5D") {
     containerStyle = {
       ...containerStyle,
@@ -161,19 +171,19 @@ export default function Layout5Template({ variant }: Layout5TemplateProps) {
   }
 
   const primaryGold = isLight ? "#92400e" : "#dda957";
-  const navBg = isLight 
-    ? "rgba(255,255,255,0.85)" 
-    : (isPhotoVariant ? "rgba(23, 22, 20, 0.75)" : "rgba(18, 17, 16, 0.85)");
+  const navBg = isLight
+    ? "rgba(255,255,255,0.85)"
+    : (isPhotoVariant || variant === "5E" ? "rgba(23, 22, 20, 0.75)" : "rgba(18, 17, 16, 0.85)");
   const navBorder = isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)";
-  const cardBg = isLight 
-    ? (variant === "5D" ? "rgba(255,255,255,0.85)" : "#ffffff") 
-    : (isPhotoVariant ? "rgba(27, 25, 23, 0.84)" : "#181717");
+  const cardBg = isLight
+    ? (variant === "5D" ? "rgba(255,255,255,0.85)" : "#ffffff")
+    : (isPhotoVariant || variant === "5E" ? "rgba(27, 25, 23, 0.84)" : "#181717");
   const cardBorder = isLight ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)";
   const textColor = isLight ? "#1c1917" : "#f4f1eb";
   const mutedText = isLight ? "#6b7280" : "rgba(244,241,235,0.65)";
-  const softwareBoxBg = isLight 
-    ? "rgba(255,255,255,0.8)" 
-    : (isPhotoVariant ? "rgba(24, 22, 20, 0.88)" : "rgba(24, 23, 23, 0.75)");
+  const softwareBoxBg = isLight
+    ? "rgba(255,255,255,0.8)"
+    : (isPhotoVariant || variant === "5E" ? "rgba(24, 22, 20, 0.88)" : "rgba(24, 23, 23, 0.75)");
 
   return (
     <div style={containerStyle}>
@@ -185,7 +195,80 @@ export default function Layout5Template({ variant }: Layout5TemplateProps) {
           3. Second photo bg2.jpg (with slow glide + stick behavior)
           4. Soft atmospheric fade into base (#171614)
          ───────────────────────────────────────────────────────────── */}
-      {isPhotoVariant && (
+      {/* ─────────────────────────────────────────────────────────────
+          5F: ONE CONTINUOUS STICKY BACKGROUND
+          Hero photo + slate fade + bg2 are stacked in one layer that
+          scrolls with the page until the bottom of bg2 meets the bottom
+          of the viewport, then stays pinned (sticky with negative top).
+          Negative marginBottom removes it from the flow so the nav and
+          content sit on top of it. Pure CSS, no scroll JS.
+         ───────────────────────────────────────────────────────────── */}
+      {variant === "5F" && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: "sticky",
+            top: `min(0px, calc(100vh - ${F_TOTAL_H}px))`,
+            height: `${F_TOTAL_H}px`,
+            marginBottom: `-${F_TOTAL_H}px`,
+            width: "100%",
+            zIndex: 0,
+            pointerEvents: "none",
+            overflow: "hidden",
+          }}
+        >
+          {/* Hero photo */}
+          <div style={{ position: "relative", width: "100%", height: `${F_HERO_H}px`, overflow: "hidden" }}>
+            <img
+              src={bgPhoto}
+              alt=""
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: "center 40%",
+                filter: "brightness(0.76) saturate(0.95)",
+              }}
+            />
+            <div style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: "48%",
+              background: "linear-gradient(to bottom, transparent 0%, rgba(73,93,112,0.38) 58%, #495d70 100%)",
+            }} />
+          </div>
+
+          {/* Second photo, overlapping the seam so the join is seamless */}
+          <div style={{ position: "relative", width: "100%", height: `${F_BG2_H}px`, marginTop: `-${F_OVERLAP}px`, background: "#495d70" }}>
+            <img
+              src={bg2Photo}
+              alt=""
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: "center bottom",
+              }}
+            />
+            <div style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "360px",
+              background: "linear-gradient(to bottom, #495d70 0%, rgba(73,93,112,0.6) 30%, rgba(73,93,112,0.2) 70%, transparent 100%)",
+            }} />
+          </div>
+        </div>
+      )}
+
+      {(variant === "5C" || variant === "5C-Sticky") && (
         <div style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
           {/* Top Hero Landscape Photo (bg.jpg) */}
           <div style={{ position: "relative", width: "100%", height: "680px", overflow: "hidden" }}>
@@ -266,6 +349,40 @@ export default function Layout5Template({ variant }: Layout5TemplateProps) {
         </div>
       )}
 
+      {/* ─────────────────────────────────────────────────────────────
+          5E: BG3 BACKGROUND
+          bg3.jpg as atmospheric background covering hero and softly fading down
+         ───────────────────────────────────────────────────────────── */}
+      {variant === "5E" && (
+        <div style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
+          {/* Top section with bg3.jpg */}
+          <div style={{ position: "relative", width: "100%", height: "1100px", overflow: "hidden" }}>
+            <img
+              src={bg3Photo}
+              alt=""
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: "center 30%",
+                filter: "brightness(0.82) saturate(0.95)",
+              }}
+            />
+            {/* Smooth sunset / atmospheric blend down into base */}
+            <div style={{
+              position: "absolute",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: "550px",
+              background: "linear-gradient(to bottom, transparent 0%, rgba(21,19,17,0.4) 40%, rgba(21,19,17,0.85) 75%, #151311 100%)",
+            }} />
+          </div>
+        </div>
+      )}
+
       {/* Top Navbar */}
       <nav style={{
         position: "sticky",
@@ -291,6 +408,8 @@ export default function Layout5Template({ variant }: Layout5TemplateProps) {
           <a href="#/5c" style={{ color: variant === "5C" ? primaryGold : mutedText, textDecoration: "none", fontWeight: variant === "5C" ? 700 : 500, padding: "2px 8px", borderRadius: "9999px", background: variant === "5C" ? "rgba(221,169,87,0.15)" : "transparent" }}>5C (Long Fade)</a>
           <a href="#/5c-sticky" style={{ color: variant === "5C-Sticky" ? primaryGold : mutedText, textDecoration: "none", fontWeight: variant === "5C-Sticky" ? 700 : 500, padding: "2px 8px", borderRadius: "9999px", background: variant === "5C-Sticky" ? "rgba(221,169,87,0.15)" : "transparent" }}>5C (Sticky Glide)</a>
           <a href="#/5d" style={{ color: variant === "5D" ? primaryGold : mutedText, textDecoration: "none", fontWeight: variant === "5D" ? 700 : 500 }}>5D (Paper)</a>
+          <a href="#/5e" style={{ color: variant === "5E" ? primaryGold : mutedText, textDecoration: "none", fontWeight: variant === "5E" ? 700 : 500, padding: "2px 8px", borderRadius: "9999px", background: variant === "5E" ? "rgba(221,169,87,0.15)" : "transparent" }}>5E (bg3)</a>
+          <a href="#/5f" style={{ color: variant === "5F" ? primaryGold : mutedText, textDecoration: "none", fontWeight: variant === "5F" ? 700 : 500, padding: "2px 8px", borderRadius: "9999px", background: variant === "5F" ? "rgba(221,169,87,0.15)" : "transparent" }}>5F (Pinned)</a>
         </div>
       </nav>
 
@@ -662,7 +781,20 @@ export default function Layout5Template({ variant }: Layout5TemplateProps) {
             >
               <div style={{ aspectRatio: "16/10", overflow: "hidden", background: isLight ? "#e5e5e5" : "#0c0c0c", position: "relative" }}>
                 {proj.images[0] ? (
-                  <img src={proj.images[0]} alt={proj.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <>
+                    {/* Blurred fill so the full photo can be shown without hard cropping */}
+                    <img
+                      src={proj.images[0]}
+                      alt=""
+                      aria-hidden="true"
+                      style={{ position: "absolute", inset: "-24px", width: "calc(100% + 48px)", height: "calc(100% + 48px)", objectFit: "cover", filter: "blur(22px) brightness(0.55) saturate(1.1)" }}
+                    />
+                    <img
+                      src={proj.images[0]}
+                      alt={proj.title}
+                      style={{ position: "relative", display: "block", width: "100%", height: "100%", objectFit: "contain" }}
+                    />
+                  </>
                 ) : (
                   <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", color: mutedText }}>No image available</div>
                 )}
@@ -814,7 +946,7 @@ export default function Layout5Template({ variant }: Layout5TemplateProps) {
 
             {selectedProject.images.length > 0 && (
               <div style={{ marginBottom: "1.5rem" }}>
-                <img src={selectedProject.images[0]} alt={selectedProject.title} style={{ width: "100%", maxHeight: "400px", objectFit: "cover", borderRadius: "10px" }} />
+                <img src={selectedProject.images[0]} alt={selectedProject.title} style={{ display: "block", width: "100%", height: "400px", objectFit: "contain", borderRadius: "10px", background: isLight ? "#f1f1f1" : "#0c0c0c" }} />
                 {selectedProject.images.length > 1 && (
                   <div style={{ display: "flex", gap: "8px", marginTop: "8px", overflowX: "auto" }}>
                     {selectedProject.images.map((img, i) => (

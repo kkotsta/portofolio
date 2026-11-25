@@ -10,6 +10,8 @@ import Layout5B from "./pages/Layout5B";
 import Layout5C from "./pages/Layout5C";
 import Layout5CSticky from "./pages/Layout5CSticky";
 import Layout5D from "./pages/Layout5D";
+import Layout5E from "./pages/Layout5E";
+import Layout5F from "./pages/Layout5F";
 import "./index.css";
 
 function Router() {
@@ -71,6 +73,8 @@ function Router() {
       <a href="#/5c" style={{ color: (normalized === "5c" || normalized === "subsectie5") ? "#e2b168" : "#fff", fontWeight: (normalized === "5c" || normalized === "subsectie5") ? 700 : 500, textDecoration: "none", padding: "3px 8px", borderRadius: "9999px", background: (normalized === "5c" || normalized === "subsectie5") ? "rgba(226,177,104,0.25)" : "transparent" }}>5C (Long Fade)</a>
       <a href="#/5c-sticky" style={{ color: normalized === "5c-sticky" ? "#e2b168" : "#fff", fontWeight: normalized === "5c-sticky" ? 700 : 500, textDecoration: "none", padding: "3px 8px", borderRadius: "9999px", background: normalized === "5c-sticky" ? "rgba(226,177,104,0.25)" : "transparent" }}>5C (Sticky)</a>
       <a href="#/5d" style={{ color: normalized === "5d" ? "#e2b168" : "#fff", fontWeight: normalized === "5d" ? 700 : 500, textDecoration: "none", padding: "3px 8px", borderRadius: "9999px", background: normalized === "5d" ? "rgba(226,177,104,0.25)" : "transparent" }}>5D (Papier)</a>
+      <a href="#/5e" style={{ color: normalized === "5e" ? "#e2b168" : "#fff", fontWeight: normalized === "5e" ? 700 : 500, textDecoration: "none", padding: "3px 8px", borderRadius: "9999px", background: normalized === "5e" ? "rgba(226,177,104,0.25)" : "transparent" }}>5E (bg3)</a>
+      <a href="#/5f" style={{ color: normalized === "5f" ? "#e2b168" : "#fff", fontWeight: normalized === "5f" ? 700 : 500, textDecoration: "none", padding: "3px 8px", borderRadius: "9999px", background: normalized === "5f" ? "rgba(226,177,104,0.25)" : "transparent" }}>5F (Pinned)</a>
     </div>
   );
 
@@ -84,6 +88,8 @@ function Router() {
   else if (normalized === "5c" || normalized === "subsectie5") PageComponent = Layout5C;
   else if (normalized === "5c-sticky") PageComponent = Layout5CSticky;
   else if (normalized === "5d") PageComponent = Layout5D;
+  else if (normalized === "5e") PageComponent = Layout5E;
+  else if (normalized === "5f") PageComponent = Layout5F;
 
   return (
     <>
